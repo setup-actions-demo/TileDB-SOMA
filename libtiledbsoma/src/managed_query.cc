@@ -120,8 +120,12 @@ void ManagedQuery::submit() {
     // Submit query
     LOG_DEBUG(fmt::format("[ManagedQuery] [{}] Submit query", name_));
 
-    query_->submit();
     query_submitted_ = true;
+    query_future_ = std::async(std::launch::async, [&]() {
+        LOG_DEBUG("[ManagedQuery] submit thread start");
+        query_->submit();
+        LOG_DEBUG("[ManagedQuery] submit thread done");
+    });
 }
 
 std::shared_ptr<ArrayBuffers> ManagedQuery::results() {
@@ -131,12 +135,10 @@ std::shared_ptr<ArrayBuffers> ManagedQuery::results() {
     }
     query_submitted_ = false;
 
-    // Poll status until query is not INPROGRESS
-    Query::Status status;
-    do {
-        status = query_->query_status();
-    } while (status == Query::Status::INPROGRESS);
+    LOG_DEBUG(fmt::format("[ManagedQuery] [{}] Waiting for query", name_));
+    query_future_.wait();
 
+    auto status = query_->query_status();
     LOG_DEBUG(fmt::format(
         "[ManagedQuery] [{}] Query status = {}", name_, (int)status));
 

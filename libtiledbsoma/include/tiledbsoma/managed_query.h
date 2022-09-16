@@ -34,6 +34,8 @@
 #define MANAGED_QUERY_H
 
 #include <stdexcept>  // for windows: error C2039: 'runtime_error': is not a member of 'std'
+
+#include <future>
 #include <unordered_set>
 
 #include <tiledb/tiledb>
@@ -278,6 +280,9 @@ class ManagedQuery {
 
     // True if the query has been submitted and the results have not been read
     bool query_submitted_ = false;
+
+    // Future for asyncronous query
+    std::future<void> query_future_;
 };
 
 };  // namespace tiledbsoma

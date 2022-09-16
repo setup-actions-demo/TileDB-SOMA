@@ -91,11 +91,12 @@ SOMAReader::SOMAReader(
 void SOMAReader::submit() {
     // Submit the query
     mq_->submit();
+    query_submitted_ = true;
     first_read_next_ = true;
 }
 
 std::optional<std::shared_ptr<ArrayBuffers>> SOMAReader::read_next() {
-    if (mq_->status() == Query::Status::UNINITIALIZED) {
+    if (!query_submitted_) {
         throw TileDBSOMAError(
             "[SOMAReader] submit must be called before read_next");
     }
