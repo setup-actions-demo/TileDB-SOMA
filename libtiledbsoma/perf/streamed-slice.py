@@ -6,15 +6,21 @@ import pyarrow as pa
 import tiledb
 from tiledbsoma.query_condition import QueryCondition
 
-use_cloud = True
-stream_count = 2
+use_cloud = False
+stream_count = 4
 verbose = False
+small = False
 
 if verbose:
     sc.config_logging("debug")
 
-soma = "krasnow"
-soma = "tabula-sapiens-immune"
+if small:
+    soma = "Krasnow"
+    value_filter = "cell_type == 'pulmonary ionocyte'"
+    value_filter = "cell_type == 'alveolar macrophage'"
+else:
+    soma = "tabula-sapiens-immune"
+    value_filter = "cell_type == 'macrophage'"
 
 if use_cloud:
     obs_uri = f"tiledb://george.powley/{soma}-obs"
@@ -90,24 +96,15 @@ def read_x_slice(value_filter, config={}):
     return full_table, obs
 
 
-cond = "cell_type == 'pulmonary ionocyte'"
-cond = "cell_type == 'alveolar macrophage'"
-cond = "cell_type == 'macrophage'"
-
 config = {}
 config["soma.init_buffer_bytes"] = f"{4 * 1024**3}"
 if verbose:
     config["config.logging_level"] = "5"
 
 print(f"Read from {x_data_uri}")
-print(f"  value_filter: {cond}")
+print(f"  value_filter: {value_filter}")
 
-x_large_buffers, obs = read_x_slice(cond, config)
-# x_small_buffers, _ = read_x_slice(cond)
-
-# exit(0)
-
-# assert x_large_buffers == x_small_buffers
+one_stream_table, obs = read_x_slice(value_filter, config)
 
 
 def read_partition(uri, name, config, partition_index, partition_count, obs):
@@ -146,11 +143,11 @@ while not done:
             tables.append(batch)
             done = False
 
-full_table = pa.concat_tables(tables)
+multi_stream_table = pa.concat_tables(tables)
 
 print(tiledbsoma.util.format_elapsed(s, f"Read X/data ({stream_count} streams)"))
 
-print(f"X/data {full_table.shape} (batches = {len(tables)})")
+print(f"X/data {multi_stream_table.shape} (batches = {len(tables)})")
 
-assert x_large_buffers == full_table
+assert one_stream_table == multi_stream_table
 print("[PASS] Results equal.")
