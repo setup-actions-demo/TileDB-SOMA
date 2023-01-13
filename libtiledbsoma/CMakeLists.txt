@@ -40,6 +40,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Mo
 option(TILEDBSOMA_BUILD_PYTHON "Build Python API bindings" ON)
 option(TILEDBSOMA_BUILD_CLI "Build tiledbsoma CLI tool" ON)
 option(TILEDBSOMA_BUILD_R "Build a static library (only) for R" OFF)
+option(TILEDBSOMA_BUILD_STATIC "Build a static library" ON)
 option(TILEDBSOMA_ENABLE_TESTING "Enable tests" ON)
 option(TILEDBSOMA_ENABLE_WERROR "Enables the -Werror flag during compilation." ON)
 
@@ -68,6 +69,7 @@ if (TILEDBSOMA_BUILD_R)
   set(TILEDBSOMA_BUILD_PYTHON OFF)
   set(TILEDBSOMA_BUILD_CLI OFF)
   set(TILEDBSOMA_ENABLE_TESTING OFF)
+  set(TILEDBSOMA_BUILD_STATIC ON)
 
   add_compile_options(-DR_BUILD)
 endif()

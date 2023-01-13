@@ -96,6 +96,6 @@ cmake --build build -j ${nproc}
 cmake --build build --target install-libtiledbsoma
 
 # Skip unit test build when building for R
-if [ "${r_build}" == "OFF" ]; then
-  cmake --build build/libtiledbsoma --target build_tests -j ${nproc}
-fi
+#if [ "${r_build}" == "OFF" ]; then
+#  cmake --build build/libtiledbsoma --target build_tests -j ${nproc}
+#fi

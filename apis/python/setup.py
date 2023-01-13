@@ -30,33 +30,94 @@ import version  # noqa E402
 
 MODULE_NAME = "tiledbsoma"
 EXT_NAME = "tiledbsoma.libtiledbsoma"
+TILEDBSOMA_DEBUG_BUILD = False
+LIBTILEDBSOMA_PATH = None
+DOWNLOAD_TILEDB_PREBUILT = True
+
+LIBNAMES = ["libtiledbsoma.dylib", "libtiledbsoma.so", "libtiledbsoma.dll", "libtiledbsoma.a"]
+
+args = sys.argv[:]
+for arg in args:
+    if arg.find("--debug") == 0:
+        TILEDBSOMA_DEBUG_BUILD = True
+        sys.argv.remove(arg)
+    if arg.find("--libtiledbsoma") == 0:
+        LIBTILEDBSOMA_PATH = arg.split("=")[1]
+        sys.argv.remove(arg)
+    if arg.find("--disable-download-tiledb-prebuilt") == 0:
+        DOWNLOAD_TILEDB_PREBUILT = False
+        sys.argv.remove(arg)
 
 
-def find_or_build(setuptools_cmd):
+def find_or_build(setuptools_cmd, recursive=True):
+    global LIBTILEDBSOMA_PATH
     # Setup paths
     python_dir = os.path.abspath(os.path.dirname(__file__))
     src_dir = f"{python_dir}/src/{MODULE_NAME}"
-    if os.path.islink(os.path.join(python_dir, "dist_links/scripts")):
+    lib = None
+    if LIBTILEDBSOMA_PATH is not None:
+        # system install
+        pass
+    elif os.path.islink(os.path.join(python_dir, "dist_links/scripts")):
         # in git source tree
         scripts_dir = f"{python_dir}/../../scripts"
-        lib_dir = f"{python_dir}/../../dist/lib"
+        #lib_dirs = [f"{python_dir}/../../dist/lib"]
+        LIBTILEDBSOMA_PATH = f"{python_dir}/../../dist"
     else:
         # in extracted sdist, with libtiledbsoma copied into dist_links/
         scripts_dir = f"{python_dir}/dist_links/scripts"
-        lib_dir = f"{python_dir}/dist_links/dist/lib"
+        #lib_dirs = [f"{python_dir}/dist_links/dist/lib"]
+        LIBTILEDBSOMA_PATH = f"{python_dir}/dist_links/dist"
+
+    lib_dirs = LIBTILEDBSOMA_PATH
+    lib_dirs = [os.path.join(os.path.normpath(LIBTILEDBSOMA_PATH), "lib")]
+    if sys.platform.startswith("linux"):
+        lib_dirs += [
+            os.path.join(LIBTILEDBSOMA_PATH, "lib64"),
+            os.path.join(LIBTILEDBSOMA_PATH, "lib", "x86_64-linux-gnu"),
+        ]
+    elif os.name == "nt":
+        lib_dirs += [os.path.join(LIBTILEDBSOMA_PATH, "bin")]
+    inc_dir = [os.path.join(LIBTILEDBSOMA_PATH, "include")]
+    if sys.platform == "darwin":
+        LFLAGS += ["-Wl,-rpath,{}".format(p) for p in lib_dirs]
 
     # Call the build script if the install library directory does not exist
-    if not os.path.exists(lib_dir):
-        subprocess.run("bash bld", cwd=scripts_dir, shell=True)
+    found = False
+    for lib_dir in lib_dirs:
+        # Exit early so that we stick with the first found library, i.e we check shared before static.
+        if found:
+            break
+        for libname in LIBNAMES:
+            print(f"Checking: {os.path.join(lib_dir, libname)} exists: {os.path.exists(os.path.join(lib_dir, libname))}")
+            if os.path.exists(os.path.join(lib_dir, libname)):
+                lib = os.path.join(lib_dir, libname)
+                found = True
+                break
+
+    if not found:
+        print("Prebuilt libtiledbsoma not found, building from source")
+        subprocess.run("bash bld", cwd=scripts_dir, shell=True, check=True)
+        for lib_dir in lib_dirs:
+            if found:
+                break
+            for libname in LIBNAMES:
+                print(f"Checking2: {os.path.join(lib_dir, libname)} exists: {os.path.exists(os.path.join(lib_dir, libname))}")
+                if os.path.exists(os.path.join(lib_dir, libname)):
+                    lib = os.path.join(lib_dir, libname)
+                    found = True
+                    break
+        if not found:
+            raise Exception("Couldn't find libtiledbsoma")
 
     # Copy native libs into the package dir so they can be found by package_data
     package_data = []
-    for obj in [os.path.join(lib_dir, f) for f in os.listdir(lib_dir)]:
+    #for obj in [os.path.join(lib_dirs, f) for f in os.listdir(lib_dirs)]:
         # skip static library
-        if not obj.endswith(".a"):
-            print(f"  copying file {obj} to {src_dir}")
-            shutil.copy(obj, src_dir)
-            package_data.append(os.path.basename(obj))
+    if not lib.endswith(".a"):
+        print(f"  copying file {lib} to {src_dir}")
+        shutil.copy(lib, src_dir)
+        package_data.append(os.path.basename(lib))
 
     # Install shared libraries inside the Python module via package_data.
     print(f"  adding to package_data: {package_data}")
