@@ -22,7 +22,6 @@ cd TileDB-SOMA
 Create a python virtual environment and install the [developer requirements](../apis/python/requirements_dev.txt):
 ```
 python -m venv test/tiledbsoma
-source test/tiledbsoma/bin/activate
 pip install -r apis/python/requirements_dev.txt
 ```
 ---
