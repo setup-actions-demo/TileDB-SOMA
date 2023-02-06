@@ -28,9 +28,10 @@ from somacore import options
 
 from . import tdb_handles
 from .common_nd_array import NDArray
-from .constants import SOMA_JOINID
+from .constants import SOMA_JOINID, TILEDB_CREATION_URI_KEY
 from .dataframe import DataFrame
 from .dense_nd_array import DenseNDArray
+from .exception import SOMAError
 from .options import SOMATileDBContext
 from .sparse_nd_array import SparseNDArray
 from .tiledb_object import AnyTileDBObject, TileDBObject
@@ -459,10 +460,35 @@ class CollectionBase(
         # Our own URI is a `tiledb://` URI. Since TileDB Cloud requires absolute
         # URIs, we need to calculate the absolute URI to pass to Group.add
         # based on our creation URI.
-        # TODO: Handle the case where we reopen a TileDB Cloud Group, but by
-        # name rather than creation path.
-        absolute_uri = uri_joinpath(self.uri, maybe_relative_uri)
+        absolute_uri = uri_joinpath(self._creation_uri(), maybe_relative_uri)
         return _ChildURI(add_uri=absolute_uri, full_uri=absolute_uri, relative=False)
+
+    def _creation_uri(self) -> str:
+        """The path that was used when calling ``create`` on this array.
+
+        This is used to build URLs for children. For instance, when running::
+
+            coll = tiledbsoma.Collection.create(
+                "tiledb://namespace/backend://path/new-name")
+            coll.close()
+
+            opened = tiledbsoma.open("tiledb://namespace/new-name", "w")
+            opened.add_new_collection("child")
+
+        ``opened.uri`` does not include information about where it is stored
+        (``backend://path/new-name``), and cannot be used to assemble a new URI
+        (i.e., creating ``backend://path/new-name/child`` is not allowed).
+        """
+        if not self.uri.startswith("tiledb://"):
+            # Non–TileDB Cloud URIs can always be appended to.
+            return self.uri
+        metadata_uri = self.metadata.get(TILEDB_CREATION_URI_KEY)
+        if metadata_uri and isinstance(metadata_uri, str):
+            return metadata_uri
+        # As a last resort, see if we are in a known-appendable-to URI.
+        if _APPENDABLE_GROUP_URI.match(self.uri):
+            return self.uri
+        raise SOMAError(f"cannot generate a relative URL based on {self.uri!r}")
 
     @classmethod
     def _check_allows_child(cls, key: str, child_cls: type) -> None:
@@ -540,3 +566,7 @@ class _ChildURI:
     """The full URI of the child, used to create a new element."""
     relative: bool
     """The ``relative`` value to pass to :meth:`tiledb.Group.add`."""
+
+
+_APPENDABLE_GROUP_URI = re.compile(r"tiledb://[\w_\.-]+/[\w]+://")
+"""Matches TileDB Group URIs that can be added to for groups."""

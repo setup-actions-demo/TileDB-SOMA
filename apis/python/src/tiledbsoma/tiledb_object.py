@@ -146,6 +146,8 @@ class TileDBObject(somacore.SOMAObject, Generic[_WrapperType_co]):
                 constants.SOMA_ENCODING_VERSION_METADATA_KEY: constants.SOMA_ENCODING_VERSION,
             }
         )
+        if handle.uri.startswith("tiledb://"):
+            handle.writer.meta[constants.TILEDB_CREATION_URI_KEY] = handle.uri
         # Semi-hack: flush the metadata immediately upon creation so that the
         # backing storage isn't half-created (i.e., there is a tiledb object
         # on disk, but its type is not stored). This is immutable, so it's fine.
