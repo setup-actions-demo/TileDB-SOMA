@@ -57,7 +57,7 @@ def test_io_create_from_matrix_Dense_nd_array(tmp_path, tdb_create_options, src_
         tmp_path.as_posix(),
         src_matrix,
         platform_config=tdb_create_options,
-    ).close()
+    )
     with factory.open(tmp_path.as_posix()) as snda:
         assert snda.shape == src_matrix.shape
         assert snda.ndim == src_matrix.ndim
@@ -107,7 +107,7 @@ def test_io_create_from_matrix_Sparse_nd_array(
         tmp_path.as_posix(),
         src_matrix,
         platform_config=tdb_create_options,
-    ).close()
+    )
 
     with factory.open(tmp_path.as_posix()) as snda:
         assert snda.shape == src_matrix.shape
