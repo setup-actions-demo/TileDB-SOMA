@@ -419,13 +419,13 @@ def test_timestamped_ops(tmp_path):
 
     # create collection @ t=10
     with soma.Collection.create(
-        tmp_path.as_uri(), context=SOMATileDBContext(write_timestamp=10)
+        tmp_path.as_uri(), context=SOMATileDBContext(timestamp=10)
     ):
         pass
 
     # add array A to it @ t=20
     with soma.Collection.open(
-        tmp_path.as_uri(), mode="w", context=SOMATileDBContext(write_timestamp=20)
+        tmp_path.as_uri(), mode="w", context=SOMATileDBContext(timestamp=20)
     ) as sc:
         sc.add_new_dense_ndarray("A", type=pa.uint8(), shape=(2, 2)).write(
             (slice(0, 2), slice(0, 2)),
@@ -434,7 +434,7 @@ def test_timestamped_ops(tmp_path):
 
     # access A via collection @ t=30 and write something into it
     with soma.Collection.open(
-        tmp_path.as_uri(), mode="w", context=SOMATileDBContext(write_timestamp=30)
+        tmp_path.as_uri(), mode="w", context=SOMATileDBContext(timestamp=30)
     ) as sc:
         sc["A"].write(
             (slice(0, 1), slice(0, 1)),
@@ -450,7 +450,7 @@ def test_timestamped_ops(tmp_path):
 
     # open A via collection @ t=25 => A should reflect first write only
     with soma.Collection.open(
-        tmp_path.as_uri(), context=SOMATileDBContext(read_timestamp=25)
+        tmp_path.as_uri(), context=SOMATileDBContext(timestamp=25)
     ) as sc:
         assert sc["A"].read((slice(None), slice(None))).to_numpy().tolist() == [
             [0, 0],
@@ -459,14 +459,14 @@ def test_timestamped_ops(tmp_path):
 
     # open collection @ t=15 => A should not even be there
     with soma.Collection.open(
-        tmp_path.as_uri(), context=SOMATileDBContext(read_timestamp=15)
+        tmp_path.as_uri(), context=SOMATileDBContext(timestamp=15)
     ) as sc:
         assert "A" not in sc
 
     # confirm timestamp validation in SOMATileDBContext
     with pytest.raises(ValueError):
-        SOMATileDBContext(read_timestamp=-1)
+        SOMATileDBContext(timestamp=-1)
     with pytest.raises(ValueError):
-        SOMATileDBContext(read_timestamp_start=2, read_timestamp=1)
+        SOMATileDBContext(timestamp_start=2, timestamp=1)
     with pytest.raises(ValueError):
-        SOMATileDBContext(write_timestamp=-1)
+        SOMATileDBContext(timestamp=-1)
