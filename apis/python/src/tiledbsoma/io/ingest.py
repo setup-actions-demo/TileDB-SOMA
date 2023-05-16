@@ -32,6 +32,7 @@ import pandas as pd
 import pyarrow as pa
 import scipy.sparse as sp
 from anndata._core.sparse_dataset import SparseDataset
+from pympler.asizeof import asizeof
 from somacore.options import PlatformConfig
 
 from .. import (
@@ -65,6 +66,7 @@ DenseMatrix = Union[NPNDArray, h5py.Dataset]
 Matrix = Union[DenseMatrix, SparseMatrix]
 _NDArr = TypeVar("_NDArr", bound=NDArray)
 _TDBO = TypeVar("_TDBO", bound=TileDBObject[RawHandle])
+_GOAL_CHUNK_BYTES = 1 << 30
 
 
 # ----------------------------------------------------------------
@@ -978,6 +980,29 @@ def _find_sparse_chunk_size(
     return chunk_size
 
 
+def _find_sparse_chunk_size_bytes(
+    matrix: SparseMatrix,
+    start_index: int,
+    axis: int,
+    sample_size: float = 0.05,
+) -> int:
+    dim_elements = matrix.shape[axis] - start_index
+    end = int(dim_elements * sample_size)
+
+    coords = [slice(None), slice(None)]
+    coords[axis] = slice(start_index, start_index + end)
+    coords = tuple(coords)
+
+    matrix_remaining_bytes = asizeof(matrix[coords]) / sample_size
+
+    chunk_size = int(dim_elements * _GOAL_CHUNK_BYTES / matrix_remaining_bytes)
+    chunk_size = min(chunk_size, dim_elements)
+    if chunk_size < 1:
+        chunk_size = 1
+
+    return chunk_size
+
+
 def _write_matrix_to_sparseNDArray(
     soma_ndarray: SparseNDArray,
     matrix: Matrix,
@@ -1060,8 +1085,8 @@ def _write_matrix_to_sparseNDArray(
             non_stride_axis = 1 - stride_axis
             chunk_size = int(math.ceil(goal_chunk_nnz / matrix.shape[non_stride_axis]))
         else:
-            chunk_size = _find_sparse_chunk_size(  # type: ignore [unreachable]
-                matrix, i, stride_axis, goal_chunk_nnz
+            chunk_size = _find_sparse_chunk_size_bytes(  # type: ignore [unreachable]
+                matrix, i, stride_axis
             )
 
         i2 = i + chunk_size
