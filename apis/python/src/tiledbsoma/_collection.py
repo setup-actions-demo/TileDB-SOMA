@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import itertools
 import re
+import time
 from typing import (
     Any,
     Callable,
@@ -117,6 +118,8 @@ class CollectionBase(
         """
         context = _validate_soma_tiledb_context(context)
         tiledb.group_create(uri=uri, ctx=context.tiledb_ctx)
+        if uri.startswith("tiledb://"):
+            time.sleep(1)
         handle = cls._wrapper_type.open(uri, "w", context, tiledb_timestamp)
         cls._set_create_metadata(handle)
         return cls(
