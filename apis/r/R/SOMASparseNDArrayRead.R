@@ -12,9 +12,10 @@ SOMASparseNDArrayRead <- R6::R6Class(
     #' @description Create (lifecycle: experimental)
     #' @param sr soma read pointer
     #' @param shape Shape of the full matrix
-    initialize = function(sr, shape) {
+    initialize = function(sr, shape, coords) {
       private$sr <- sr
       private$shape <- shape
+      private$coords <- coords
     },
 
     #' @description Read as a sparse matrix (lifecycle: experimental). Returns
@@ -24,7 +25,12 @@ SOMASparseNDArrayRead <- R6::R6Class(
     #' @return \link{SparseReadIter}
     sparse_matrix = function(zero_based=FALSE) {
       #TODO implement zero_based argument, currently doesn't do anything
-      SparseReadIter$new(sr = private$sr, shape = private$shape, zero_based=zero_based)
+      SparseReadIter$new(
+        sr = private$sr,
+        shape = private$shape,
+        coords = private$coords,
+        zero_based = zero_based
+      )
     },
 
     #' @description Read as a arrow::\link[arrow]{Table} (lifecycle: experimental).
@@ -37,7 +43,8 @@ SOMASparseNDArrayRead <- R6::R6Class(
 
   private = list(
     sr=NULL,
-    shape=NULL
+    shape=NULL,
+    coords = NULL
   )
 
 )

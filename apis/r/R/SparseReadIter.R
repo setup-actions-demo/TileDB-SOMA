@@ -17,7 +17,7 @@ SparseReadIter <- R6::R6Class(
     #' @param shape Shape of the full matrix
     #' @param zero_based Logical, if TRUE will make iterator for Matrix::\link[Matrix]{dgTMatrix-class}
     #' otherwise \link{matrixZeroBasedView}.
-    initialize = function(sr, shape, zero_based=FALSE) {
+    initialize = function(sr, shape, coords = NULL, zero_based=FALSE) {
       #TODO implement zero_based argument, currently doesn't do anything
       stopifnot("Array must have two dimensions" = length(shape) == 2,
                 "Array dimensions must not exceed '.Machine$integer.max'" = any(shape < .Machine$integer.max))
@@ -27,6 +27,7 @@ SparseReadIter <- R6::R6Class(
         private$repr <- "T"
         private$shape <- shape
         private$zero_based <- zero_based
+        private$coords <- coords
     },
 
 
@@ -51,13 +52,58 @@ SparseReadIter <- R6::R6Class(
 
       mat
 
-    }),
+    },
+
+    realize = function(repr = c('T', 'C', 'R')) {
+      stopifnot(
+        "'repr' must be a single character of either 'T', 'C', or 'R'" = is.character(repr)
+      )
+      repr <- match.arg(repr)
+      mat <- self$concat()
+      if (is.null(mat)) {
+        return(NULL)
+      }
+      # TODO: enable reindexing for zero-based matrices
+      if (private$zero_based) {
+        warning("zero-based")
+        return(mat)
+      }
+      mat <- private$reindex(mat)
+      return(switch(
+        EXPR = repr,
+        T = mat,
+        C = methods::as(mat, 'CsparseMatrix'),
+        R = methods::as(mat, 'RsparseMatrix')
+      ))
+    }
+  ),
 
   private = list(
 
-    repr=NULL,
-    shape=NULL,
-    zero_based=NULL,
+    repr = NULL,
+    shape = NULL,
+    zero_based = NULL,
+    coords = NULL,
+
+    reindex = function(mat) {
+      # TODO: handle length(private$coords) > .Machine$integer.max
+      # Thanks Pablo
+      stopifnot(inherits(mat, 'TsparseMatrix'))
+      if (is.null(private$coords)) {
+        return(mat)
+      }
+      nobs <- length(private$coords[[1L]])
+      nvar <- length(private$coords[[2L]])
+      obs_index <- stats::setNames(seq_len(nobs), private$coords[[1L]])
+      var_index <- stats::setNames(seq_len(nvar), private$coords[[2L]])
+      return(Matrix::sparseMatrix(
+        i = obs_index[as.character(mat@i)],
+        j = var_index[as.character(mat@j)],
+        x = mat@x,
+        dims = c(nobs, nvar),
+        repr = 'T'
+      ))
+    },
 
     ## refined from base class
     soma_reader_transform = function(x) {
