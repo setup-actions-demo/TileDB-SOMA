@@ -181,6 +181,13 @@ TileDBArray <- R6::R6Class(
       c(self$dimnames(), self$attrnames())
     },
 
+    #' @description The number of columns in the array, including dimensions and
+    #' attributes (lifecycle: experimental).
+    #' @return An `integer` vector of length 1.
+    ncol = function() {
+      length(self$colnames())
+    },
+
     #' @description Retrieve names of index (dimension) columns (lifecycle: experimental)
     #' @return A character vector with the array index (dimension) names
     index_column_names = function() {
