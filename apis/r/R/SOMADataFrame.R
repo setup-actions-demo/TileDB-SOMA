@@ -225,9 +225,13 @@ SOMADataFrame <- R6::R6Class(
                      loglevel = log_level)
 
       TableReadIter$new(sr)
+    },
 
+    #' @description The number of rows in the array (lifecycle: experimental).
+    #' @return An `integer` vector of length 1.
+    nrow = function() {
+      nnz(self$uri) / self$ndim()
     }
-
   ),
 
   private = list(
