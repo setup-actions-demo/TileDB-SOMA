@@ -44,6 +44,13 @@ test_that("Basic mechanics", {
     ignore_attr = TRUE
   )
 
+  # Helpers
+  expect_identical(sdf$dimnames(), "foo")
+  expect_identical(sdf$attrnames(), setdiff(names(tbl0), "foo"))
+  expect_identical(sdf$colnames(), names(tbl0))
+  expect_equal(sdf$ncol(), tbl0$num_columns)
+  expect_equal(sdf$nrow(), tbl0$num_rows)
+
   # Read result should recreate the original Table
   tbl1 <- sdf$read()$concat()
   expect_true(tbl1$Equals(tbl0))
@@ -51,15 +58,7 @@ test_that("Basic mechanics", {
 
   # Same as above but now for RecordBatch
   sdf <- SOMADataFrameOpen(uri, mode = "WRITE")
-  rb0 <- arrow::record_batch(foo = 1L:36L,
-                             soma_joinid = 1L:36L,
-                             bar = 1.1:36.1,
-                             baz = c("á", "ą", "ã", "à", "å", "ä", "æ", "ç", "ć", "Ç", "í",
-                                     "ë", "é", "è", "ê", "ł", "Ł", "ñ", "ń", "ó", "ô", "ò",
-                                     "ö", "ø", "Ø", "ř", "š", "ś", "ş", "Š", "ú", "ü", "ý",
-                                     "ź", "Ž", "Ż"),
-                             schema = asch)
-
+  rb0 <- arrow::as_record_batch(tbl0)
   sdf$write(rb0)
   sdf$close()
 
