@@ -18,7 +18,7 @@ from typing_extensions import Self
 from . import _arrow_types, _util
 from . import pytiledbsoma as clib
 from ._constants import SOMA_JOINID
-from ._query_condition import QueryCondition
+# from ._query_condition import QueryCondition
 from ._read_iters import TableReadIter
 from ._tiledb_array import TileDBArray
 from ._types import NPFloating, NPInteger, OpenTimestamp, Slice, is_slice_of
@@ -335,6 +335,7 @@ class DataFrame(TileDBArray, somacore.DataFrame):
         schema = self._handle.schema
         query_condition = None
         if value_filter is not None:
+            from ._query_condition import QueryCondition
             query_condition = QueryCondition(value_filter)
 
         sr = self._soma_reader(

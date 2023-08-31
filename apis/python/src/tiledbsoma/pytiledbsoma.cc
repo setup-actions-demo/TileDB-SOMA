@@ -38,7 +38,7 @@
 
 #include <tiledbsoma/tiledbsoma>
 
-#include "query_condition.cc"
+// #include "query_condition.cc"
 
 #define DENUM(x) .value(#x, TILEDB_##x)
 
@@ -99,7 +99,7 @@ PYBIND11_MODULE(pytiledbsoma, m) {
         .value("rowmajor", ResultOrder::rowmajor)
         .value("colmajor", ResultOrder::colmajor);
 
-    tiledbpy::init_query_condition(m);
+    // tiledbpy::init_query_condition(m);
 
     m.doc() = "SOMA acceleration library";
 
@@ -179,10 +179,10 @@ PYBIND11_MODULE(pytiledbsoma, m) {
                             throw TileDBSOMAError(e.what());
                         }
 
-                        qc = py_query_condition.attr("c_obj")
-                                 .cast<tiledbpy::PyQueryCondition>()
-                                 .ptr()
-                                 .get();
+                        // qc = py_query_condition.attr("c_obj")
+                        //          .cast<tiledbpy::PyQueryCondition>()
+                        //          .ptr()
+                        //          .get();
                     }
 
                     // Release python GIL after we're done accessing python
@@ -255,10 +255,10 @@ PYBIND11_MODULE(pytiledbsoma, m) {
                         throw TileDBSOMAError(e.what());
                     }
 
-                    qc = py_query_condition.attr("c_obj")
-                             .cast<tiledbpy::PyQueryCondition>()
-                             .ptr()
-                             .get();
+                    // qc = py_query_condition.attr("c_obj")
+                    //          .cast<tiledbpy::PyQueryCondition>()
+                    //          .ptr()
+                    //          .get();
                 }
 
                 // Release python GIL after we're done accessing python objects

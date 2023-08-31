@@ -13,7 +13,7 @@ import attrs
 import numpy as np
 import tiledb
 
-from . import pytiledbsoma as clib
+from . import query_condition as qc
 from ._exception import SOMAError
 
 # In Python 3.7, a boolean literal like `True` is of type `ast.NameConstant`.
@@ -111,7 +111,7 @@ class QueryCondition:
 
     expression: str
     tree: ast.Expression = attrs.field(init=False, repr=False)
-    c_obj: clib.PyQueryCondition = attrs.field(init=False, repr=False)
+    c_obj: qc.PyQueryCondition = attrs.field(init=False, repr=False)
 
     def __attrs_post_init__(self):
         try:
@@ -132,7 +132,7 @@ class QueryCondition:
         qctree = QueryConditionTree(schema, query_attrs)
         self.c_obj = qctree.visit(self.tree.body)
 
-        if not isinstance(self.c_obj, clib.PyQueryCondition):
+        if not isinstance(self.c_obj, qc.PyQueryCondition):
             raise tiledb.TileDBError(
                 "Malformed query condition statement. A query condition must "
                 "be made up of one or more Boolean expressions."
@@ -147,34 +147,34 @@ class QueryConditionTree(ast.NodeVisitor):
     query_attrs: List[str]
 
     def visit_BitOr(self, node):
-        return clib.TILEDB_OR
+        return qc.TILEDB_OR
 
     def visit_Or(self, node):
-        return clib.TILEDB_OR
+        return qc.TILEDB_OR
 
     def visit_BitAnd(self, node):
-        return clib.TILEDB_AND
+        return qc.TILEDB_AND
 
     def visit_And(self, node):
-        return clib.TILEDB_AND
+        return qc.TILEDB_AND
 
     def visit_Gt(self, node):
-        return clib.TILEDB_GT
+        return qc.TILEDB_GT
 
     def visit_GtE(self, node):
-        return clib.TILEDB_GE
+        return qc.TILEDB_GE
 
     def visit_Lt(self, node):
-        return clib.TILEDB_LT
+        return qc.TILEDB_LT
 
     def visit_LtE(self, node):
-        return clib.TILEDB_LE
+        return qc.TILEDB_LE
 
     def visit_Eq(self, node):
-        return clib.TILEDB_EQ
+        return qc.TILEDB_EQ
 
     def visit_NotEq(self, node):
-        return clib.TILEDB_NE
+        return qc.TILEDB_NE
 
     def visit_In(self, node):
         return node
@@ -182,16 +182,16 @@ class QueryConditionTree(ast.NodeVisitor):
     def visit_List(self, node):
         return list(node.elts)
 
-    def visit_Compare(self, node: ast.Compare) -> clib.PyQueryCondition:
+    def visit_Compare(self, node: ast.Compare) -> qc.PyQueryCondition:
         operator = self.visit(node.ops[0])
 
         if operator in (
-            clib.TILEDB_GT,
-            clib.TILEDB_GE,
-            clib.TILEDB_LT,
-            clib.TILEDB_LE,
-            clib.TILEDB_EQ,
-            clib.TILEDB_NE,
+            qc.TILEDB_GT,
+            qc.TILEDB_GE,
+            qc.TILEDB_LT,
+            qc.TILEDB_LE,
+            qc.TILEDB_EQ,
+            qc.TILEDB_NE,
         ):
             result = self.aux_visit_Compare(
                 self.visit(node.left),
@@ -206,7 +206,7 @@ class QueryConditionTree(ast.NodeVisitor):
                 value = self.aux_visit_Compare(
                     self.visit(lhs), self.visit(op), self.visit(rhs)
                 )
-                result = result.combine(value, clib.TILEDB_AND)
+                result = result.combine(value, qc.TILEDB_AND)
         elif isinstance(operator, ast.In):
             rhs = node.comparators[0]
             if not isinstance(rhs, ast.List):
@@ -216,23 +216,23 @@ class QueryConditionTree(ast.NodeVisitor):
 
             consts = self.visit(rhs)
             result = self.aux_visit_Compare(
-                self.visit(node.left), clib.TILEDB_EQ, consts[0]
+                self.visit(node.left), qc.TILEDB_EQ, consts[0]
             )
 
             for val in consts[1:]:
                 value = self.aux_visit_Compare(
-                    self.visit(node.left), clib.TILEDB_EQ, val
+                    self.visit(node.left), qc.TILEDB_EQ, val
                 )
-                result = result.combine(value, clib.TILEDB_OR)
+                result = result.combine(value, qc.TILEDB_OR)
 
         return result
 
     def aux_visit_Compare(
         self,
         lhs: QueryConditionNodeElem,
-        op_node: clib.tiledb_query_condition_op_t,
+        op_node: qc.tiledb_query_condition_op_t,
         rhs: QueryConditionNodeElem,
-    ) -> clib.PyQueryCondition:
+    ) -> qc.PyQueryCondition:
         att, val, op = self.order_nodes(lhs, rhs, op_node)
 
         att = self.get_att_from_node(att)
@@ -242,7 +242,7 @@ class QueryConditionTree(ast.NodeVisitor):
         dtype = "string" if dt.kind in "SUa" else dt.name
         val = self.cast_val_to_dtype(val, dtype)
 
-        pyqc = clib.PyQueryCondition()
+        pyqc = qc.PyQueryCondition()
         self.init_pyqc(pyqc, dtype)(att, val, op)
 
         return pyqc
@@ -268,20 +268,20 @@ class QueryConditionTree(ast.NodeVisitor):
         self,
         att: QueryConditionNodeElem,
         val: QueryConditionNodeElem,
-        op: clib.tiledb_query_condition_op_t,
+        op: qc.tiledb_query_condition_op_t,
     ) -> Tuple[
         QueryConditionNodeElem,
         QueryConditionNodeElem,
-        clib.tiledb_query_condition_op_t,
+        qc.tiledb_query_condition_op_t,
     ]:
         if not self.is_att_node(att):
             REVERSE_OP = {
-                clib.TILEDB_GT: clib.TILEDB_LT,
-                clib.TILEDB_GE: clib.TILEDB_LE,
-                clib.TILEDB_LT: clib.TILEDB_GT,
-                clib.TILEDB_LE: clib.TILEDB_GE,
-                clib.TILEDB_EQ: clib.TILEDB_EQ,
-                clib.TILEDB_NE: clib.TILEDB_NE,
+                qc.TILEDB_GT: qc.TILEDB_LT,
+                qc.TILEDB_GE: qc.TILEDB_LE,
+                qc.TILEDB_LT: qc.TILEDB_GT,
+                qc.TILEDB_LE: qc.TILEDB_GE,
+                qc.TILEDB_EQ: qc.TILEDB_EQ,
+                qc.TILEDB_NE: qc.TILEDB_NE,
             }
 
             op = REVERSE_OP[op]
@@ -382,7 +382,7 @@ class QueryConditionTree(ast.NodeVisitor):
 
         return val
 
-    def init_pyqc(self, pyqc: clib.PyQueryCondition, dtype: str) -> Callable:
+    def init_pyqc(self, pyqc: qc.PyQueryCondition, dtype: str) -> Callable:
         if dtype != "string" and np.issubdtype(dtype, np.datetime64):
             dtype = "int64"
 
@@ -393,7 +393,7 @@ class QueryConditionTree(ast.NodeVisitor):
 
         return getattr(pyqc, init_fn_name)
 
-    def visit_BinOp(self, node: ast.BinOp) -> clib.PyQueryCondition:
+    def visit_BinOp(self, node: ast.BinOp) -> qc.PyQueryCondition:
         try:
             op = self.visit(node.op)
         except KeyError:
@@ -408,7 +408,7 @@ class QueryConditionTree(ast.NodeVisitor):
 
         return result
 
-    def visit_BoolOp(self, node: ast.BoolOp) -> clib.PyQueryCondition:
+    def visit_BoolOp(self, node: ast.BoolOp) -> qc.PyQueryCondition:
         try:
             op = self.visit(node.op)
         except KeyError:

@@ -262,6 +262,16 @@ setuptools.setup(
             extra_link_args=CXX_FLAGS,
             extra_compile_args=["-std=c++17"] + CXX_FLAGS,
             language="c++",
+        ),
+        Pybind11Extension(
+            "tiledbsoma.query_condition",
+            ["src/tiledbsoma/query_condition.cc"],
+            include_dirs=INC_DIRS,
+            library_dirs=LIB_DIRS,
+            libraries=["tiledb"],
+            extra_link_args=CXX_FLAGS,
+            extra_compile_args=["-std=c++17"] + CXX_FLAGS,
+            language="c++",
         )
     ],
     zip_safe=False,
