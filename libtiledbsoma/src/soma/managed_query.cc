@@ -54,6 +54,13 @@ ManagedQuery::ManagedQuery(
     reset();
 }
 
+void ManagedQuery::close() {
+    if (query_future_.valid()) {
+        query_future_.wait();
+    }
+    array_->close();
+}
+
 void ManagedQuery::reset() {
     query_ = std::make_unique<Query>(schema_->context(), *array_);
     subarray_ = std::make_unique<Subarray>(schema_->context(), *array_);
@@ -160,9 +167,11 @@ void ManagedQuery::submit_read() {
     if (!is_empty_query()) {
         // Submit query in a separate thread, so we can return immediately
         query_future_ = std::async(std::launch::async, [&]() {
-            LOG_DEBUG("[ManagedQuery] submit thread start");
+            LOG_DEBUG(
+                fmt::format("[ManagedQuery] [{}] submit thread start", name_));
             query_->submit();
-            LOG_DEBUG("[ManagedQuery] submit thread done");
+            LOG_DEBUG(
+                fmt::format("[ManagedQuery] [{}] submit thread done", name_));
         });
     }
     query_submitted_ = true;
@@ -180,7 +189,7 @@ std::shared_ptr<ArrayBuffers> ManagedQuery::results() {
 
     if (!query_submitted_) {
         throw TileDBSOMAError(fmt::format(
-            "[ManagedQuery][{}] submit query before reading results", name_));
+            "[ManagedQuery] [{}] submit query before reading results", name_));
     }
     query_submitted_ = false;
 
