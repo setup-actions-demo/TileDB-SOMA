@@ -208,9 +208,10 @@ class ArrayWrapper(Wrapper[tiledb.Array]):
     def ndim(self) -> int:
         return int(self._handle.schema.domain.ndim)
 
-    def nonempty_domain(self) -> Tuple[Tuple[Any, Any], ...]:
+    def nonempty_domain(self) -> Optional[Tuple[Tuple[Any, Any], ...]]:
         try:
-            return self._handle.nonempty_domain()
+            ned: Optional[Tuple[Tuple[Any, Any], ...]] = self._handle.nonempty_domain()
+            return ned
         except tiledb.TileDBError as e:
             raise SOMAError(e)
 
@@ -312,7 +313,7 @@ class DataFrameWrapper(Wrapper[clib.SOMADataFrame]):
     def ndim(self) -> int:
         return int(self._handle.ndim)
 
-    def nonempty_domain(self) -> Tuple[Tuple[Any, Any], ...]:
+    def nonempty_domain(self) -> Optional[Tuple[Tuple[Any, Any], ...]]:
         result = []
         for name in self._handle.index_column_names:
             dtype = self._handle.schema.field(name).type
@@ -327,7 +328,7 @@ class DataFrameWrapper(Wrapper[clib.SOMADataFrame]):
                 )
             else:
                 result.append(self._handle.domain(name))
-        return tuple(result)
+        return None if len(result) == 0 else tuple(result)
 
     @property
     def attr_names(self) -> Tuple[str, ...]:

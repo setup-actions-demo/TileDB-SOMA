@@ -518,7 +518,13 @@ class DataFrame(TileDBArray, somacore.DataFrame):
             if coord.stop is None:
                 # There's no way to specify "to infinity" for strings.
                 # We have to get the nonempty domain and use that as the end.
-                _, stop = self._handle.nonempty_domain()[dim_idx]
+                ned = self._handle.nonempty_domain()
+                if ned is None:
+                    raise ValueError(
+                        "Found empty nonempty domain when setting "
+                        "string coordinates in _set_reader_coord"
+                    )
+                _, stop = ned[dim_idx]
             else:
                 stop = coord.stop
             sr.set_dim_ranges_string_or_bytes(dim.name, [(start, stop)])
