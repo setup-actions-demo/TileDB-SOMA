@@ -358,13 +358,18 @@ class DataFrame(TileDBArray, somacore.DataFrame):
         query_condition = None
         if value_filter is not None:
             query_condition = QueryCondition(value_filter)
+            
+        order = {
+            options.ResultOrder.AUTO: clib.ResultOrder.automatic,
+            options.ResultOrder.ROW_MAJOR: clib.ResultOrder.rowmajor,
+            options.ResultOrder.COLUMN_MAJOR: clib.ResultOrder.colmajor,
+            "auto": clib.ResultOrder.automatic,
+            "row-major": clib.ResultOrder.rowmajor,
+            "col-major": clib.ResultOrder.colmajor
+        }
 
-        sr = self._soma_reader(
-            schema=schema,  # query_condition needs this
-            column_names=column_names,
-            query_condition=query_condition,
-            result_order=result_order,
-        )
+        sr = self._handle._handle
+        sr.reset(column_names or [], "auto", order[result_order])
 
         self._set_reader_coords(sr, coords)
 
@@ -500,17 +505,17 @@ class DataFrame(TileDBArray, somacore.DataFrame):
         # Note: slice(None, None) matches the is_slice_of part, unless we also check the dim-type
         # part.
         if (is_slice_of(coord, str) or is_slice_of(coord, bytes)) and (
-            dim.dtype == "str" or dim.dtype == "bytes"
+         pa.types.is_large_string(dim.type) or pa.types.is_large_binary(dim.type) or pa.types.is_string(dim.type) or pa.types.is_binary(dim.type)
         ):
             _util.validate_slice(coord)
             # Figure out which one.
-            dim_type: Union[Type[str], Type[bytes]] = type(dim.domain[0])
+            dim_type: Union[Type[str], Type[bytes]] = type(self.domain[dim_idx][0])
             # A ``None`` or empty start is always equivalent to empty str/bytes.
             start = coord.start or dim_type()
             if coord.stop is None:
                 # There's no way to specify "to infinity" for strings.
                 # We have to get the nonempty domain and use that as the end.
-                _, stop = self._handle.reader.nonempty_domain()[dim_idx]
+                _, stop = self._handle.nonempty_domain(dim.name)
             else:
                 stop = coord.stop
             sr.set_dim_ranges_string_or_bytes(dim.name, [(start, stop)])
@@ -518,16 +523,14 @@ class DataFrame(TileDBArray, somacore.DataFrame):
 
         # Note: slice(None, None) matches the is_slice_of part, unless we also check the dim-type
         # part.
-        if is_slice_of(coord, np.datetime64) and dim.dtype.name.startswith(
-            "datetime64"
-        ):
+        if is_slice_of(coord, np.datetime64) and pa.types.is_timestamp(dim.type):
             _util.validate_slice(coord)
             # These timestamp types are stored in Arrow as well as TileDB as 64-bit integers (with
             # distinguishing metadata of course). For purposes of the query logic they're just
             # int64.
-            istart = coord.start or dim.domain[0]
+            istart = coord.start or self.domain[dim_idx][0]
             istart = int(istart.astype("int64"))
-            istop = coord.stop or dim.domain[1]
+            istop = coord.stop or self.domain[dim_idx][1]
             istop = int(istop.astype("int64"))
             sr.set_dim_ranges_int64(dim.name, [(istart, istop)])
             return True
@@ -553,38 +556,29 @@ class DataFrame(TileDBArray, somacore.DataFrame):
         # See libtiledbsoma.cc for more context on why we need the
         # explicit type-check here.
 
-        if dim.dtype == np.int64:
+        if pa.types.is_int64(dim.type):
             sr.set_dim_points_int64(dim.name, coord)
-        elif dim.dtype == np.int32:
+        elif pa.types.is_int32(dim.type):
             sr.set_dim_points_int32(dim.name, coord)
-        elif dim.dtype == np.int16:
+        elif pa.types.is_int16(dim.type):
             sr.set_dim_points_int16(dim.name, coord)
-        elif dim.dtype == np.int8:
+        elif pa.types.is_int8(dim.type):
             sr.set_dim_points_int8(dim.name, coord)
-
-        elif dim.dtype == np.uint64:
+        elif pa.types.is_uint64(dim.type):
             sr.set_dim_points_uint64(dim.name, coord)
-        elif dim.dtype == np.uint32:
+        elif pa.types.is_uint32(dim.type):
             sr.set_dim_points_uint32(dim.name, coord)
-        elif dim.dtype == np.uint16:
+        elif pa.types.is_uint16(dim.type):
             sr.set_dim_points_uint16(dim.name, coord)
-        elif dim.dtype == np.uint8:
+        elif pa.types.is_uint8(dim.type):
             sr.set_dim_points_uint8(dim.name, coord)
-
-        elif dim.dtype == np.float64:
+        elif pa.types.is_float64(dim.type):
             sr.set_dim_points_float64(dim.name, coord)
-        elif dim.dtype == np.float32:
+        elif pa.types.is_float32(dim.type):
             sr.set_dim_points_float32(dim.name, coord)
-
-        elif dim.dtype == "str" or dim.dtype == "bytes":
+        elif pa.types.is_large_string(dim.type) or pa.types.is_large_binary(dim.type) or pa.types.is_string(dim.type) or pa.types.is_binary(dim.type):
             sr.set_dim_points_string_or_bytes(dim.name, coord)
-
-        elif (
-            dim.dtype == "datetime64[s]"
-            or dim.dtype == "datetime64[ms]"
-            or dim.dtype == "datetime64[us]"
-            or dim.dtype == "datetime64[ns]"
-        ):
+        elif pa.types.is_timestamp(dim.type):
             if not isinstance(coord, (tuple, list, np.ndarray)):
                 raise ValueError(
                     f"unhandled coord type {type(coord)} for index column named {dim.name}"
@@ -608,43 +602,41 @@ class DataFrame(TileDBArray, somacore.DataFrame):
         self, sr: clib.SOMAArray, dim_idx: int, dim: tiledb.Dim, coord: Slice[Any]
     ) -> bool:
         try:
-            lo_hi = _util.slice_to_numeric_range(coord, dim.domain)
+            lo_hi = _util.slice_to_numeric_range(coord, self.domain[dim_idx])
         except _util.NonNumericDimensionError:
             return False  # We only handle numeric dimensions here.
 
         if not lo_hi:
             return True
 
-        elif dim.dtype == np.int64:
+        elif pa.types.is_int64(dim.type):
             sr.set_dim_ranges_int64(dim.name, [lo_hi])
             return True
-        elif dim.dtype == np.int32:
+        elif pa.types.is_int32(dim.type):
             sr.set_dim_ranges_int32(dim.name, [lo_hi])
             return True
-        elif dim.dtype == np.int16:
+        elif pa.types.is_int16(dim.type):
             sr.set_dim_ranges_int16(dim.name, [lo_hi])
             return True
-        elif dim.dtype == np.int8:
+        elif pa.types.is_int8(dim.type):
             sr.set_dim_ranges_int8(dim.name, [lo_hi])
             return True
-
-        elif dim.dtype == np.uint64:
+        elif pa.types.is_uint64(dim.type):
             sr.set_dim_ranges_uint64(dim.name, [lo_hi])
             return True
-        elif dim.dtype == np.uint32:
+        elif pa.types.is_uint32(dim.type):
             sr.set_dim_ranges_uint32(dim.name, [lo_hi])
             return True
-        elif dim.dtype == np.uint16:
+        elif pa.types.is_uint16(dim.type):
             sr.set_dim_ranges_uint16(dim.name, [lo_hi])
             return True
-        elif dim.dtype == np.uint8:
+        elif pa.types.is_uint8(dim.type):
             sr.set_dim_ranges_uint8(dim.name, [lo_hi])
             return True
-
-        elif dim.dtype == np.float64:
+        elif pa.types.is_float64(dim.type):
             sr.set_dim_ranges_float64(dim.name, [lo_hi])
             return True
-        elif dim.dtype == np.float32:
+        elif pa.types.is_float32(dim.type):
             sr.set_dim_ranges_float32(dim.name, [lo_hi])
             return True
 

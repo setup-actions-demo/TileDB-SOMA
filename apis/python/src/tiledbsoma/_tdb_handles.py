@@ -27,6 +27,8 @@ import attrs
 import tiledb
 from somacore import options
 from typing_extensions import Literal, Self
+import numpy as np
+import pyarrow as pa
 
 from ._exception import DoesNotExistError, SOMAError, is_does_not_exist_error
 from ._types import OpenTimestamp
@@ -244,7 +246,7 @@ class DataFrameWrapper(Wrapper[clib.SOMADataFrame]):
         mode: options.OpenMode,
         context: SOMATileDBContext,
         timestamp: int,
-    ) -> tiledb.Array:
+    ) -> clib.SOMADataFrame:
         open_mode = clib.OpenMode.read if mode == "r" else clib.OpenMode.write
         return clib.SOMADataFrame.open(
             uri,
@@ -258,10 +260,36 @@ class DataFrameWrapper(Wrapper[clib.SOMADataFrame]):
     @property
     def schema(self) -> tiledb.ArraySchema:
         return self._handle.schema
-    
+
     @property
     def meta(self):
         return self._handle.meta
+ 
+    @property
+    def domain(self):
+        result = []
+        for name in self._handle.index_column_names:
+            dtype = self._handle.schema.field(name).type
+            if pa.types.is_timestamp(dtype):
+                dom = self._handle.domain(name)
+                np_dtype = dtype.to_pandas_dtype()
+                tz = np.datetime_data(np_dtype)[0]
+                result.append(
+                    (np_dtype.type(dom[0], tz), np_dtype.type(dom[1], tz)))
+            else:
+                result.append(self._handle.domain(name))
+        return tuple(result)
+       
+    @property
+    def ndim(self):
+        return self._handle.ndim
+    
+    @property
+    def index_column_names(self):
+        return tuple(self._handle.index_column_names)
+    
+    def nonempty_domain(self, name: str):
+        return self._handle.nonempty_domain(name)
 
 
 class _DictMod(enum.Enum):

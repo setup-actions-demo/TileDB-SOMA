@@ -47,6 +47,8 @@ from ._util import (
 )
 from .options import SOMATileDBContext
 from .options._soma_tiledb_context import _validate_soma_tiledb_context
+from ._tdb_handles import DataFrameWrapper
+from . import pytiledbsoma as clib
 
 # A collection can hold any sub-type of TileDBObject
 CollectionElementType = TypeVar("CollectionElementType", bound=AnyTileDBObject)
@@ -425,9 +427,14 @@ class CollectionBase(  # type: ignore[misc]  # __eq__ false positive
             raise KeyError(err_str) from None
         if entry.soma is None:
             from . import _factory  # Delayed binding to resolve circular import.
+            
+            if self.mode == "r" and clib.SOMADataFrame.exists(entry.entry.uri):
+                wrapper = DataFrameWrapper
+            else:
+                wrapper = entry.entry.wrapper_type
 
             entry.soma = _factory._open_internal(
-                entry.entry.wrapper_type.open,
+                wrapper.open,
                 entry.entry.uri,
                 self.mode,
                 self.context,
