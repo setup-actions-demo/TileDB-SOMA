@@ -273,9 +273,9 @@ class DataFrameWrapper(Wrapper[clib.SOMADataFrame]):
             if pa.types.is_timestamp(dtype):
                 dom = self._handle.domain(name)
                 np_dtype = dtype.to_pandas_dtype()
-                tz = np.datetime_data(np_dtype)[0]
                 result.append(
-                    (np_dtype.type(dom[0], tz), np_dtype.type(dom[1], tz)))
+                    (np_dtype.type(dom[0], dtype.unit), 
+                     np_dtype.type(dom[1], dtype.unit)))
             else:
                 result.append(self._handle.domain(name))
         return tuple(result)
