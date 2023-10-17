@@ -27,8 +27,8 @@ import attrs
 import tiledb
 from somacore import options
 from typing_extensions import Literal, Self
-import numpy as np
 import pyarrow as pa
+from ._arrow_types import tiledb_schema_to_arrow
 
 from ._exception import DoesNotExistError, SOMAError, is_does_not_exist_error
 from ._types import OpenTimestamp
@@ -195,11 +195,31 @@ class ArrayWrapper(Wrapper[tiledb.Array]):
             timestamp=timestamp,
             ctx=context.tiledb_ctx,
         )
-
+        
     @property
     def schema(self) -> tiledb.ArraySchema:
         return self._handle.schema
+    
+    @property
+    def domain(self):
+        dom = self._handle.schema.domain
+        return tuple(dom.dim(i).domain for i in range(dom.ndim))
 
+    def nonempty_domain(self):
+        try:
+            return self._handle.nonempty_domain()
+        except tiledb.TileDBError as e:
+            raise SOMAError(e)
+    
+    @property
+    def attr_names(self):
+        schema = self._handle.schema
+        return tuple(schema.attr(i).name for i in range(schema.nattr)) 
+       
+    @property
+    def dim_names(self):
+        schema = self._handle.schema
+        return tuple(schema.domain.dim(i).name for i in range(schema.domain.ndim))
 
 @attrs.define(frozen=True)
 class GroupEntry:
@@ -258,7 +278,7 @@ class DataFrameWrapper(Wrapper[clib.SOMADataFrame]):
         )
 
     @property
-    def schema(self) -> tiledb.ArraySchema:
+    def schema(self) -> pa.Schema:
         return self._handle.schema
 
     @property
@@ -283,14 +303,32 @@ class DataFrameWrapper(Wrapper[clib.SOMADataFrame]):
     @property
     def ndim(self):
         return self._handle.ndim
+
+    def nonempty_domain(self):
+        result = []
+        for name in self._handle.index_column_names:
+            dtype = self._handle.schema.field(name).type
+            if pa.types.is_timestamp(dtype):
+                ned = self._handle.nonempty_domain(name)
+                np_dtype = dtype.to_pandas_dtype()
+                result.append(
+                    (np_dtype.type(ned[0], dtype.unit), 
+                     np_dtype.type(ned[1], dtype.unit)))
+            else:
+                result.append(self._handle.domain(name))
+        return tuple(result)
     
     @property
-    def index_column_names(self):
+    def attr_names(self):
+        result = []
+        for field in self.schema:
+            if field.name not in self._handle.index_column_names:
+                result.append(field.name)
+        return tuple(result) 
+        
+    @property
+    def dim_names(self):
         return tuple(self._handle.index_column_names)
-    
-    def nonempty_domain(self, name: str):
-        return self._handle.nonempty_domain(name)
-
 
 class _DictMod(enum.Enum):
     """State machine to keep track of modifications to a dictionary.

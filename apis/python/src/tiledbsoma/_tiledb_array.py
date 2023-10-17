@@ -78,32 +78,16 @@ class TileDBArray(TileDBObject[_tdb_handles.ArrayWrapper]):
 
     def _tiledb_dim_names(self) -> Tuple[str, ...]:
         """Reads the dimension names from the schema: for example, ['obs_id', 'var_id']."""
-        schema = self._handle.schema
-        if isinstance(schema, tiledb.ArraySchema):
-            return tuple(schema.domain.dim(i).name for i in range(schema.domain.ndim))
-        else:
-            return tuple(self._handle.index_column_names)
+        return self._handle.dim_names
 
     def _tiledb_attr_names(self) -> Tuple[str, ...]:
         """Reads the attribute names from the schema:
         for example, the list of column names in a dataframe.
         """
-        schema = self._handle.schema
-        if isinstance(schema, tiledb.ArraySchema):
-            return tuple(schema.attr(i).name for i in range(schema.nattr))
-        else:
-            result = []
-            for field in schema:
-                if field.name not in self._handle.index_column_names:
-                    result.append(field.name)
-            return tuple(result)
+        return self._handle.attr_names
 
     def _tiledb_domain(self) -> Tuple[Tuple[Any, Any], ...]:
-        schema = self._handle.schema
-        if isinstance(schema, tiledb.ArraySchema):
-            return tuple(schema.domain.dim(i).domain for i in range(0, schema.domain.ndim))
-        else:
-            return self._handle.domain
+        return self._handle.domain
 
     def _soma_reader(
         self,

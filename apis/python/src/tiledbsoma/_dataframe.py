@@ -354,7 +354,6 @@ class DataFrame(TileDBArray, somacore.DataFrame):
         _util.check_unpartitioned(partitions)
         self._check_open_read()
 
-        schema = self._handle.schema
         query_condition = None
         if value_filter is not None:
             query_condition = QueryCondition(value_filter)
