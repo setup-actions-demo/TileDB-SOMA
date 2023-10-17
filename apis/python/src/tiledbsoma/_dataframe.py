@@ -354,17 +354,16 @@ class DataFrame(TileDBArray, somacore.DataFrame):
         _util.check_unpartitioned(partitions)
         self._check_open_read()
 
-        query_condition = None
         if value_filter is not None:
-            query_condition = QueryCondition(value_filter)
-            
+            QueryCondition(value_filter)
+
         to_clib_result_order = {
             options.ResultOrder.AUTO: clib.ResultOrder.automatic,
             options.ResultOrder.ROW_MAJOR: clib.ResultOrder.rowmajor,
             options.ResultOrder.COLUMN_MAJOR: clib.ResultOrder.colmajor,
             "auto": clib.ResultOrder.automatic,
             "row-major": clib.ResultOrder.rowmajor,
-            "column-major": clib.ResultOrder.colmajor
+            "column-major": clib.ResultOrder.colmajor,
         }
         if result_order not in to_clib_result_order:
             raise ValueError(f"Invalid result_order: {result_order}")
@@ -506,7 +505,10 @@ class DataFrame(TileDBArray, somacore.DataFrame):
         # Note: slice(None, None) matches the is_slice_of part, unless we also check the dim-type
         # part.
         if (is_slice_of(coord, str) or is_slice_of(coord, bytes)) and (
-         pa.types.is_large_string(dim.type) or pa.types.is_large_binary(dim.type) or pa.types.is_string(dim.type) or pa.types.is_binary(dim.type)
+            pa.types.is_large_string(dim.type)
+            or pa.types.is_large_binary(dim.type)
+            or pa.types.is_string(dim.type)
+            or pa.types.is_binary(dim.type)
         ):
             _util.validate_slice(coord)
             # Figure out which one.
@@ -516,7 +518,7 @@ class DataFrame(TileDBArray, somacore.DataFrame):
             if coord.stop is None:
                 # There's no way to specify "to infinity" for strings.
                 # We have to get the nonempty domain and use that as the end.
-                _, stop = self._handle.nonempty_domain(dim.name)
+                _, stop = self._handle.nonempty_domain()[dim_idx]
             else:
                 stop = coord.stop
             sr.set_dim_ranges_string_or_bytes(dim.name, [(start, stop)])
@@ -577,7 +579,12 @@ class DataFrame(TileDBArray, somacore.DataFrame):
             sr.set_dim_points_float64(dim.name, coord)
         elif pa.types.is_float32(dim.type):
             sr.set_dim_points_float32(dim.name, coord)
-        elif pa.types.is_large_string(dim.type) or pa.types.is_large_binary(dim.type) or pa.types.is_string(dim.type) or pa.types.is_binary(dim.type):
+        elif (
+            pa.types.is_large_string(dim.type)
+            or pa.types.is_large_binary(dim.type)
+            or pa.types.is_string(dim.type)
+            or pa.types.is_binary(dim.type)
+        ):
             sr.set_dim_points_string_or_bytes(dim.name, coord)
         elif pa.types.is_timestamp(dim.type):
             if not isinstance(coord, (tuple, list, np.ndarray)):

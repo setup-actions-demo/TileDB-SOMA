@@ -64,7 +64,9 @@ class TileDBArray(TileDBObject[_tdb_handles.ArrayWrapper]):
             Experimental.
         """
         if isinstance(self._tiledb_array_schema(), tiledb.ArraySchema):
-            return tiledb_schema_to_arrow(self._tiledb_array_schema(), self.uri, self._ctx)
+            return tiledb_schema_to_arrow(
+                self._tiledb_array_schema(), self.uri, self._ctx
+            )
         else:
             return self._tiledb_array_schema()
 
@@ -130,24 +132,20 @@ class TileDBArray(TileDBObject[_tdb_handles.ArrayWrapper]):
                 f"coords type {type(coords)} must be a regular sequence,"
                 " not str or bytes"
             )
-        
-        schema = self._handle.schema
-        if isinstance(schema, tiledb.ArraySchema):
-            ndim = schema.domain.ndim
-        else:
-            ndim = self._handle.ndim
-        
-        if len(coords) > ndim:
+
+        if len(coords) > self._handle.ndim:
             raise ValueError(
                 f"coords ({len(coords)} elements) must be shorter than ndim"
-                f" ({ndim})"
+                f" ({self._handle.ndim})"
             )
         for i, coord in enumerate(coords):
+            schema = self._handle.schema
+
             if isinstance(schema, tiledb.ArraySchema):
                 dim = self._handle.schema.domain.dim(i)
             else:
                 dim = self._handle.schema.field(i)
-                
+
             if not self._set_reader_coord(sr, i, dim, coord):
                 raise TypeError(
                     f"coord type {type(coord)} for dimension {dim.name}"
@@ -166,7 +164,6 @@ class TileDBArray(TileDBObject[_tdb_handles.ArrayWrapper]):
         Returns:
             True if successful, False if unrecognized.
         """
-        del dim_idx  # Unused.
         if coord is None:
             return True  # No constraint; select all in this dimension
 

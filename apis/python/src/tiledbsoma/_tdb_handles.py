@@ -18,25 +18,24 @@ from typing import (
     Mapping,
     MutableMapping,
     Optional,
+    Tuple,
     Type,
     TypeVar,
     Union,
 )
 
 import attrs
+import pyarrow as pa
 import tiledb
 from somacore import options
 from typing_extensions import Literal, Self
-import pyarrow as pa
-from ._arrow_types import tiledb_schema_to_arrow
 
+from . import pytiledbsoma as clib
 from ._exception import DoesNotExistError, SOMAError, is_does_not_exist_error
 from ._types import OpenTimestamp
 from .options._soma_tiledb_context import SOMATileDBContext
 
-from . import pytiledbsoma as clib
-
-RawHandle = Union[tiledb.Array, tiledb.Group]
+RawHandle = Union[tiledb.Array, tiledb.Group, clib.SOMADataFrame]
 _RawHdl_co = TypeVar("_RawHdl_co", bound=RawHandle, covariant=True)
 """A raw TileDB object. Covariant because Handles are immutable enough."""
 
@@ -195,31 +194,36 @@ class ArrayWrapper(Wrapper[tiledb.Array]):
             timestamp=timestamp,
             ctx=context.tiledb_ctx,
         )
-        
+
     @property
     def schema(self) -> tiledb.ArraySchema:
         return self._handle.schema
-    
+
     @property
-    def domain(self):
+    def domain(self) -> Tuple[Tuple[Any, Any], ...]:
         dom = self._handle.schema.domain
         return tuple(dom.dim(i).domain for i in range(dom.ndim))
 
-    def nonempty_domain(self):
+    @property
+    def ndim(self) -> int:
+        return int(self._handle.schema.domain.ndim)
+
+    def nonempty_domain(self) -> Tuple[Tuple[Any, Any], ...]:
         try:
             return self._handle.nonempty_domain()
         except tiledb.TileDBError as e:
             raise SOMAError(e)
-    
+
     @property
-    def attr_names(self):
+    def attr_names(self) -> Tuple[str, ...]:
         schema = self._handle.schema
-        return tuple(schema.attr(i).name for i in range(schema.nattr)) 
-       
+        return tuple(schema.attr(i).name for i in range(schema.nattr))
+
     @property
-    def dim_names(self):
+    def dim_names(self) -> Tuple[str, ...]:
         schema = self._handle.schema
         return tuple(schema.domain.dim(i).name for i in range(schema.domain.ndim))
+
 
 @attrs.define(frozen=True)
 class GroupEntry:
@@ -257,7 +261,8 @@ class GroupWrapper(Wrapper[tiledb.Group]):
         self.initial_contents = {
             o.name: GroupEntry.from_object(o) for o in reader if o.name is not None
         }
-        
+
+
 class DataFrameWrapper(Wrapper[clib.SOMADataFrame]):
     @classmethod
     def _opener(
@@ -282,11 +287,11 @@ class DataFrameWrapper(Wrapper[clib.SOMADataFrame]):
         return self._handle.schema
 
     @property
-    def meta(self):
-        return self._handle.meta
- 
+    def meta(self) -> Dict[str, str]:
+        return dict(self._handle.meta)
+
     @property
-    def domain(self):
+    def domain(self) -> Tuple[Tuple[Any, Any], ...]:
         result = []
         for name in self._handle.index_column_names:
             dtype = self._handle.schema.field(name).type
@@ -294,17 +299,20 @@ class DataFrameWrapper(Wrapper[clib.SOMADataFrame]):
                 dom = self._handle.domain(name)
                 np_dtype = dtype.to_pandas_dtype()
                 result.append(
-                    (np_dtype.type(dom[0], dtype.unit), 
-                     np_dtype.type(dom[1], dtype.unit)))
+                    (
+                        np_dtype.type(dom[0], dtype.unit),
+                        np_dtype.type(dom[1], dtype.unit),
+                    )
+                )
             else:
                 result.append(self._handle.domain(name))
         return tuple(result)
-       
-    @property
-    def ndim(self):
-        return self._handle.ndim
 
-    def nonempty_domain(self):
+    @property
+    def ndim(self) -> int:
+        return int(self._handle.ndim)
+
+    def nonempty_domain(self) -> Tuple[Tuple[Any, Any], ...]:
         result = []
         for name in self._handle.index_column_names:
             dtype = self._handle.schema.field(name).type
@@ -312,23 +320,27 @@ class DataFrameWrapper(Wrapper[clib.SOMADataFrame]):
                 ned = self._handle.nonempty_domain(name)
                 np_dtype = dtype.to_pandas_dtype()
                 result.append(
-                    (np_dtype.type(ned[0], dtype.unit), 
-                     np_dtype.type(ned[1], dtype.unit)))
+                    (
+                        np_dtype.type(ned[0], dtype.unit),
+                        np_dtype.type(ned[1], dtype.unit),
+                    )
+                )
             else:
                 result.append(self._handle.domain(name))
         return tuple(result)
-    
+
     @property
-    def attr_names(self):
+    def attr_names(self) -> Tuple[str, ...]:
         result = []
         for field in self.schema:
             if field.name not in self._handle.index_column_names:
                 result.append(field.name)
-        return tuple(result) 
-        
+        return tuple(result)
+
     @property
-    def dim_names(self):
+    def dim_names(self) -> Tuple[str, ...]:
         return tuple(self._handle.index_column_names)
+
 
 class _DictMod(enum.Enum):
     """State machine to keep track of modifications to a dictionary.
