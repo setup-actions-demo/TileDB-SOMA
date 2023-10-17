@@ -359,17 +359,19 @@ class DataFrame(TileDBArray, somacore.DataFrame):
         if value_filter is not None:
             query_condition = QueryCondition(value_filter)
             
-        order = {
+        to_clib_result_order = {
             options.ResultOrder.AUTO: clib.ResultOrder.automatic,
             options.ResultOrder.ROW_MAJOR: clib.ResultOrder.rowmajor,
             options.ResultOrder.COLUMN_MAJOR: clib.ResultOrder.colmajor,
             "auto": clib.ResultOrder.automatic,
             "row-major": clib.ResultOrder.rowmajor,
-            "col-major": clib.ResultOrder.colmajor
+            "column-major": clib.ResultOrder.colmajor
         }
+        if result_order not in to_clib_result_order:
+            raise ValueError(f"Invalid result_order: {result_order}")
 
         sr = self._handle._handle
-        sr.reset(column_names or [], "auto", order[result_order])
+        sr.reset(column_names or [], "auto", to_clib_result_order[result_order])
 
         self._set_reader_coords(sr, coords)
 
