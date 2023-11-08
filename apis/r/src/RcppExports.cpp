@@ -11,6 +11,50 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// reindex_demo
+void reindex_demo();
+RcppExport SEXP _tiledbsoma_reindex_demo() {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    reindex_demo();
+    return R_NilValue;
+END_RCPP
+}
+// reindex_create
+Rcpp::XPtr<tdbs::IntIndexer> reindex_create();
+RcppExport SEXP _tiledbsoma_reindex_create() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(reindex_create());
+    return rcpp_result_gen;
+END_RCPP
+}
+// reindex_map
+Rcpp::XPtr<tdbs::IntIndexer> reindex_map(Rcpp::XPtr<tdbs::IntIndexer> idx, const Rcpp::NumericVector nvec, const int nthreads);
+RcppExport SEXP _tiledbsoma_reindex_map(SEXP idxSEXP, SEXP nvecSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::XPtr<tdbs::IntIndexer> >::type idx(idxSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector >::type nvec(nvecSEXP);
+    Rcpp::traits::input_parameter< const int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(reindex_map(idx, nvec, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// reindex_lookup
+Rcpp::NumericVector reindex_lookup(Rcpp::XPtr<tdbs::IntIndexer> idx, const Rcpp::NumericVector kvec);
+RcppExport SEXP _tiledbsoma_reindex_lookup(SEXP idxSEXP, SEXP kvecSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::XPtr<tdbs::IntIndexer> >::type idx(idxSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector >::type kvec(kvecSEXP);
+    rcpp_result_gen = Rcpp::wrap(reindex_lookup(idx, kvec));
+    return rcpp_result_gen;
+END_RCPP
+}
 // soma_array_reader
 Rcpp::List soma_array_reader(const std::string& uri, Rcpp::Nullable<Rcpp::CharacterVector> colnames, Rcpp::Nullable<Rcpp::XPtr<tiledb::QueryCondition>> qc, Rcpp::Nullable<Rcpp::List> dim_points, Rcpp::Nullable<Rcpp::List> dim_ranges, std::string batch_size, std::string result_order, const std::string& loglevel, Rcpp::Nullable<Rcpp::CharacterVector> config);
 RcppExport SEXP _tiledbsoma_soma_array_reader(SEXP uriSEXP, SEXP colnamesSEXP, SEXP qcSEXP, SEXP dim_pointsSEXP, SEXP dim_rangesSEXP, SEXP batch_sizeSEXP, SEXP result_orderSEXP, SEXP loglevelSEXP, SEXP configSEXP) {
@@ -199,6 +243,10 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_tiledbsoma_reindex_demo", (DL_FUNC) &_tiledbsoma_reindex_demo, 0},
+    {"_tiledbsoma_reindex_create", (DL_FUNC) &_tiledbsoma_reindex_create, 0},
+    {"_tiledbsoma_reindex_map", (DL_FUNC) &_tiledbsoma_reindex_map, 3},
+    {"_tiledbsoma_reindex_lookup", (DL_FUNC) &_tiledbsoma_reindex_lookup, 2},
     {"_tiledbsoma_soma_array_reader", (DL_FUNC) &_tiledbsoma_soma_array_reader, 9},
     {"_tiledbsoma_set_log_level", (DL_FUNC) &_tiledbsoma_set_log_level, 1},
     {"_tiledbsoma_get_column_types", (DL_FUNC) &_tiledbsoma_get_column_types, 2},
