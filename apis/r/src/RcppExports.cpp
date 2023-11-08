@@ -11,15 +11,6 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// reindex_demo
-void reindex_demo();
-RcppExport SEXP _tiledbsoma_reindex_demo() {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    reindex_demo();
-    return R_NilValue;
-END_RCPP
-}
 // reindex_create
 Rcpp::XPtr<tdbs::IntIndexer> reindex_create();
 RcppExport SEXP _tiledbsoma_reindex_create() {
@@ -243,7 +234,6 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_tiledbsoma_reindex_demo", (DL_FUNC) &_tiledbsoma_reindex_demo, 0},
     {"_tiledbsoma_reindex_create", (DL_FUNC) &_tiledbsoma_reindex_create, 0},
     {"_tiledbsoma_reindex_map", (DL_FUNC) &_tiledbsoma_reindex_map, 3},
     {"_tiledbsoma_reindex_lookup", (DL_FUNC) &_tiledbsoma_reindex_lookup, 2},
