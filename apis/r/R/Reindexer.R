@@ -12,7 +12,7 @@ Reindexer <- R6::R6Class(
         #' @param map_keys An integer64 vector with keys to be mapped by the class
         #' @param nb_threads The number of threads to use, defaults to four
         initialize = function(map_keys, nb_threads = 4) {
-            stopifnot("Keys must be 'integer64'" = is.integer64(map_keys))
+            stopifnot("Keys must be 'integer64'" = bit64::is.integer64(map_keys))
             private$idxptr <- reindex_create()
             private$threadcount <- nb_threads
             reindex_map(private$idxptr, map_keys)
@@ -25,7 +25,7 @@ Reindexer <- R6::R6Class(
         lookup = function(lookup_keys) {
             ## catch vulnerability in indexer
             stopifnot("Keys must outnumber thread count" = length(lookup_keys) > private$threadcount,
-                      "Keys must be 'integer64'" = is.integer64(lookup_keys))
+                      "Keys must be 'integer64'" = bit64::is.integer64(lookup_keys))
             reindex_lookup(private$idxptr, lookup_keys)
         }
     ),
