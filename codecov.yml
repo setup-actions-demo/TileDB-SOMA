@@ -4,6 +4,7 @@ coverage:
 ignore:
   - "apis/r/inst/tiledb/"
   - "apis/python/devtools/"
+  - "apis/python/src/tiledbsoma/__init__.py"
 
 comment:
   layout: "header, diff, flags, components"  # show component info in the PR comment
