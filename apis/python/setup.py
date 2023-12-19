@@ -242,10 +242,12 @@ if os.name == "posix" and sys.platform != "darwin":
     LIB_DIRS.append(str(tiledbsoma_dir / "lib64"))
     LIB_DIRS.append(str(tiledb_dir / "lib" / "x86_64-linux-gnu"))
     LIB_DIRS.append(str(tiledb_dir / "lib64"))
+    LIB_DIRS.append(str("."))
     CXX_FLAGS.append(f'-Wl,-rpath,{str(tiledbsoma_dir / "lib" / "x86_64-linux-gnu")}')
     CXX_FLAGS.append(f'-Wl,-rpath,{str(tiledbsoma_dir / "lib64")}')
     CXX_FLAGS.append(f'-Wl,-rpath,{str(tiledb_dir / "lib" / "x86_64-linux-gnu")}')
     CXX_FLAGS.append(f'-Wl,-rpath,{str(tiledb_dir / "lib64")}')
+    CXX_FLAGS.append(f'-Wl,-rpath,{str(".")}')
 
 # ----------------------------------------------------------------
 # Don't use `if __name__ == "__main__":` as the `python_requires` must
