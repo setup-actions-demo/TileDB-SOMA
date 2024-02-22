@@ -43,5 +43,5 @@ def tiledbsoma_build_index(
         thread_count = max(1, tdb_concurrency // 2)
 
     reindexer = clib.IntIndexer()
-    reindexer.map_locations(keys, thread_count)
+    reindexer.map_locations(keys, context)
     return reindexer  # type: ignore[no-any-return]

@@ -38,6 +38,7 @@
 #include <tiledb/tiledb>
 
 namespace tiledbsoma {
+class ThreadPool;
 
 using namespace tiledb;
 
@@ -67,6 +68,10 @@ class SOMAContext {
         return cfg;
     }
 
+    std::shared_ptr<ThreadPool>& thread_pool() {
+        return thread_pool_;
+    }
+
    private:
     //===================================================================
     //= private non-static
@@ -74,6 +79,9 @@ class SOMAContext {
 
     // TileDB context
     std::shared_ptr<Context> ctx_;
+
+    // Threadpool
+    std::shared_ptr<ThreadPool> thread_pool_ = nullptr;
 };
 }  // namespace tiledbsoma
 

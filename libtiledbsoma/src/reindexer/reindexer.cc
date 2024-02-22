@@ -47,15 +47,12 @@ KHASH_MAP_INIT_INT64(m64, int64_t)
 namespace tiledbsoma {
 
 void IntIndexer::map_locations(
-    const int64_t* keys, size_t size, size_t threads) {
+    const int64_t* keys, size_t size, std::shared_ptr<tiledbsoma::SOMAContext> context) {
     map_size_ = size;
 
     // Handling edge cases
     if (size == 0) {
         return;
-    }
-    if (threads == 0) {
-        throw std::runtime_error("Re-indexer thread count cannot be zero.");
     }
 
     hash_ = kh_init(m64);
@@ -64,6 +61,7 @@ void IntIndexer::map_locations(
     khint64_t k;
     int64_t counter = 0;
     // Hash map construction
+    int threads = 5;
     LOG_DEBUG(fmt::format(
         "[Re-indexer] Start of Map locations with {} keys and {} threads",
         size,
@@ -79,18 +77,31 @@ void IntIndexer::map_locations(
     }
     auto hsize = kh_size(hash_);
     LOG_DEBUG(fmt::format("[Re-indexer] khash size = {}", hsize));
-    if (threads > 1) {
-        tiledb_thread_pool_ = std::make_unique<tiledbsoma::ThreadPool>(threads);
+
+    if (threads == 0) {
+        throw std::runtime_error("Re-indexer thread count cannot be zero.");
     }
     LOG_DEBUG(
         fmt::format("[Re-indexer] Thread pool started and hash table created"));
+    context_ = context;
 }
 
 void IntIndexer::lookup(const int64_t* keys, int64_t* results, int size) {
     if (size == 0) {
         return;
     }
-    if (tiledb_thread_pool_ == nullptr) {  // When concurrency is 1
+    if (context_->thread_pool() == nullptr) {
+        auto cfg = context_->tiledb_config();
+        int concurrency = 10;
+        if (cfg.find("sm.compute_concurrency_level") != cfg.end()) {
+            concurrency = std::stoi(cfg["sm.compute_concurrency_level"]);
+        }
+        int thread_count = std::max(1, concurrency / 2);
+        if (thread_count > 1) {
+            context_->thread_pool() = std::make_shared<tiledbsoma::ThreadPool>(thread_count);
+        }
+    }
+    if (context_->thread_pool() == nullptr) {  // When concurrency is 1
         for (int i = 0; i < size; i++) {
             auto k = kh_get(m64, hash_, keys[i]);
             if (k == kh_end(hash_)) {
@@ -104,12 +115,12 @@ void IntIndexer::lookup(const int64_t* keys, int64_t* results, int size) {
     }
     LOG_DEBUG(fmt::format(
         "Lookup with thread concurrency {} on data size {}",
-        tiledb_thread_pool_->concurrency_level(),
+        context_->thread_pool()->concurrency_level(),
         size));
 
     std::vector<tiledbsoma::ThreadPool::Task> tasks;
 
-    size_t thread_chunk_size = size / tiledb_thread_pool_->concurrency_level();
+    size_t thread_chunk_size = size / context_->thread_pool()->concurrency_level();
     if (thread_chunk_size == 0) {
         thread_chunk_size = 1;
     }
@@ -122,7 +133,7 @@ void IntIndexer::lookup(const int64_t* keys, int64_t* results, int size) {
         }
         LOG_DEBUG(fmt::format(
             "Creating tileDB task for the range from {} to {} ", start, end));
-        tiledbsoma::ThreadPool::Task task = tiledb_thread_pool_->execute(
+        tiledbsoma::ThreadPool::Task task = context_->thread_pool()->execute(
             [this, start, end, &results, &keys]() {
                 for (size_t i = start; i < end; i++) {
                     auto k = kh_get(m64, hash_, keys[i]);
@@ -142,7 +153,7 @@ void IntIndexer::lookup(const int64_t* keys, int64_t* results, int size) {
             start,
             end));
     }
-    tiledb_thread_pool_->wait_all(tasks);
+    context_->thread_pool()->wait_all(tasks);
 }
 
 IntIndexer::~IntIndexer() {
@@ -151,8 +162,8 @@ IntIndexer::~IntIndexer() {
     }
 }
 
-IntIndexer::IntIndexer(const int64_t* keys, int size, int threads) {
-    map_locations(keys, size, threads);
+IntIndexer::IntIndexer(const int64_t* keys, int size, std::shared_ptr<tiledbsoma::SOMAContext> context) {
+    map_locations(keys, size, context);
 }
 
 }  // namespace tiledbsoma

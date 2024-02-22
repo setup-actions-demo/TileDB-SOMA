@@ -46,23 +46,16 @@ void load_reindexer(py::module &m) {
     // between 0 and number of keys - 1) based on khash
     py::class_<IntIndexer>(m, "IntIndexer")
         .def(py::init<>())
-        .def(py::init<std::vector<int64_t>&, int>())
+        .def(py::init<std::vector<int64_t>&, std::shared_ptr<SOMAContext>>())
         .def(
             "map_locations",
             [](IntIndexer& indexer,
                 py::array_t<int64_t> keys,
-                int num_threads) {
+                std::shared_ptr<SOMAContext> context) {
                 auto buffer = keys.request();
                 int64_t* data = static_cast<int64_t*>(buffer.ptr);
                 size_t length = buffer.shape[0];
-                indexer.map_locations(keys.data(), keys.size(), num_threads);
-            })
-        .def(
-            "map_locations",
-            [](IntIndexer& indexer,
-                std::vector<int64_t> keys,
-                int num_threads) {
-                indexer.map_locations(keys.data(), keys.size(), num_threads);
+                indexer.map_locations(keys.data(), keys.size(), context);
             })
         // Perform lookup for a large input array of keys and return the looked
         // up value array (passing ownership from C++ to python)
