@@ -561,6 +561,12 @@ enum ArrowType ArrowAdapter::to_nanoarrow_type(std::string_view sv) {
         return NANOARROW_TYPE_LARGE_STRING;
     else if (sv == "b")
         return NANOARROW_TYPE_BOOL;
+    else if (sv == "tss:")
+        return NANOARROW_TYPE_TIMESTAMP;
+    else if (sv == "z")
+        return NANOARROW_TYPE_BINARY;
+    else if (sv == "Z")
+        return NANOARROW_TYPE_LARGE_BINARY;
     else
         throw TileDBSOMAError(fmt::format(
             "ArrowAdapter: Unsupported TileDB datatype string: {} ", sv));
