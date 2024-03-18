@@ -313,15 +313,13 @@ ArrowAdapter::to_arrow(std::shared_ptr<ColumnBuffer> column) {
     exitIfError(
         ArrowSchemaAllocateChildren(sch, 0), "Bad schema children alloc");
 
-#if 0
-    schema->format = to_arrow_format(column->type()).data();
-    schema->name = column->name().data();
+    schema->format = strdup(to_arrow_format(column->type()).data());
+    schema->name = strdup(column->name().data());
     schema->metadata = nullptr;
     schema->flags = 0;
     schema->n_children = 0;
     schema->children = nullptr;
     schema->dictionary = nullptr;
-#endif
     schema->release = &release_schema;
     schema->private_data = nullptr;
 
@@ -353,7 +351,6 @@ ArrowAdapter::to_arrow(std::shared_ptr<ColumnBuffer> column) {
         array->n_buffers,
         column->is_nullable()));
 
-#if 0
     array->null_count = 0;
     array->offset = 0;
     array->n_buffers = n_buffers;
@@ -361,7 +358,6 @@ ArrowAdapter::to_arrow(std::shared_ptr<ColumnBuffer> column) {
     array->buffers = nullptr;
     array->children = nullptr;
     array->dictionary = nullptr;
-#endif
     array->release = &release_array;
     array->private_data = (void*)arrow_buffer;
 
@@ -421,7 +417,6 @@ ArrowAdapter::to_arrow(std::shared_ptr<ColumnBuffer> column) {
         exitIfError(
             ArrowSchemaAllocateChildren(dict_sch, 0),
             "Bad schema children alloc");
-#if 0
         dict_sch->format = strdup(to_arrow_format(enmr->type(), false).data());
         dict_sch->name = nullptr;
         dict_sch->metadata = nullptr;
@@ -431,14 +426,12 @@ ArrowAdapter::to_arrow(std::shared_ptr<ColumnBuffer> column) {
         dict_sch->dictionary = nullptr;
         dict_sch->release = &release_schema;
         dict_sch->private_data = nullptr;
-#endif
 
         exitIfError(
             ArrowArrayInitFromType(dict_arr, dnatype), "Bad array init");
         exitIfError(
             ArrowArrayAllocateChildren(dict_arr, 0),
             "Bad array children alloc");
-#if 0
         const int n_buf = strcmp(dict_sch->format, "u") == 0 ? 3 : 2;
         dict_arr->null_count = 0;
         dict_arr->offset = 0;
@@ -449,9 +442,9 @@ ArrowAdapter::to_arrow(std::shared_ptr<ColumnBuffer> column) {
         dict_arr->dictionary = nullptr;
         dict_arr->release = &release_array;
         dict_arr->private_data = nullptr;
-        dict_arr->buffers = (const void**) malloc(sizeof(void*) * n_buf); //new const void*[n_buf];
+        dict_arr->buffers = (const void**)malloc(
+            sizeof(void*) * n_buf);      // new const void*[n_buf];
         dict_arr->buffers[0] = nullptr;  // validity: none here
-#endif
 
         // TODO string types currently get the data and offset
         // buffers from ColumnBuffer::enum_offsets and
