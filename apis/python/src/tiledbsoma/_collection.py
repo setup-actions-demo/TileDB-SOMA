@@ -688,6 +688,26 @@ class Collection(  # type: ignore[misc]  # __eq__ false positive
 
     __slots__ = ()
 
+    @classmethod
+    def open(
+        cls,
+        uri: str,
+        mode: options.OpenMode = "r",
+        *,
+        tiledb_timestamp: Optional[OpenTimestamp] = None,
+        context: Optional[SOMATileDBContext] = None,
+        platform_config: Optional[options.PlatformConfig] = None,
+    ) -> Self:
+        """Opens this specific type of SOMA object."""
+        return super().open(
+            uri,
+            mode,
+            tiledb_timestamp=tiledb_timestamp,
+            context=context,
+            platform_config=platform_config,
+            soma_type="SOMACollection",
+        )
+
 
 @typeguard_ignore
 def _real_class(cls: Type[Any]) -> type:
