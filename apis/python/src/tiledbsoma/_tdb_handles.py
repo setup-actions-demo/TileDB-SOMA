@@ -58,6 +58,7 @@ def open(
 ) -> "Wrapper[RawHandle]":
     """Determine whether the URI is an array or group, and open it."""
     open_mode = clib.OpenMode.read if mode == "r" else clib.OpenMode.write
+    print("HEYYYY", str(soma_type))
 
     # raise("WAMI")
 
@@ -89,6 +90,9 @@ def open(
             if soma_object is not None
             else tiledb.object_type(uri, ctx=context.tiledb_ctx)
         )
+        print("NEW LUP SOMA TYPE", soma_type)
+    else:
+        print("NEW ARG SOMA TYPE", soma_type)
 
     if not soma_type:
         raise DoesNotExistError(f"{uri!r} does not exist")
