@@ -96,11 +96,6 @@ void ArrowAdapter::release_schema(struct ArrowSchema* schema) {
 void ArrowAdapter::release_array(struct ArrowArray* array) {
     auto arrow_buffer = static_cast<ArrowBuffer*>(array->private_data);
 
-    LOG_TRACE(fmt::format(
-        "[ArrowAdapter] release_array {} use_count={}",
-        arrow_buffer->buffer_->name(),
-        arrow_buffer->buffer_.use_count()));
-
     // Delete the ArrowBuffer, which was allocated with new.
     // If the ArrowBuffer.buffer_ shared_ptr is the last reference to the
     // underlying ColumnBuffer, the ColumnBuffer will be deleted.
@@ -132,7 +127,7 @@ std::unique_ptr<ArrowSchema> ArrowAdapter::arrow_schema_from_tiledb_array(
     auto nattr = tiledb_schema.attribute_num();
 
     std::unique_ptr<ArrowSchema> arrow_schema = std::make_unique<ArrowSchema>();
-    arrow_schema->format = strdup("+s");
+    arrow_schema->format = "+s";
     arrow_schema->n_children = ndim + nattr;
     arrow_schema->release = &ArrowAdapter::release_schema;
     arrow_schema->children = new ArrowSchema*[arrow_schema->n_children];
