@@ -131,5 +131,5 @@ jobs:
         run: apis/r/tools/r-ci.sh coverage
 
       - name: View Logs
-        run: apis/r/tools/r-ci.sh dump_logs
+        run: cat /home/runner/work/TileDB-SOMA/TileDB-SOMA/apis/r/tiledbsoma.Rcheck/00check.log
         if: failure()
