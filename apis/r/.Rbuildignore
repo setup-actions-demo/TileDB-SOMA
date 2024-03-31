@@ -32,3 +32,6 @@ src/libtiledbsoma/docs
 ^data-raw$
 ^doc$
 ^Meta$
+^travis-tool\.sh$
+^run\.sh$
+^travis_wait_.*\.log$

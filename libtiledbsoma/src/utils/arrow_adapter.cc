@@ -166,7 +166,7 @@ std::unique_ptr<ArrowSchema> ArrowAdapter::arrow_schema_from_tiledb_array(
             auto dict = new ArrowSchema;
             if (enmr.type() == TILEDB_STRING_ASCII or
                 enmr.type() == TILEDB_CHAR) {
-                dict->format = strdup("z");
+                dict->format = "z";
             } else {
                 dict->format = strdup(
                     ArrowAdapter::to_arrow_format(enmr.type(), false).data());
