@@ -225,6 +225,7 @@ void SOMAArray::reset(
     result_order_ = result_order;
     first_read_next_ = true;
     submitted_ = false;
+    // array_buffer_ = nullptr;
 }
 
 std::optional<std::shared_ptr<ArrayBuffers>> SOMAArray::read_next() {
@@ -234,7 +235,7 @@ std::optional<std::shared_ptr<ArrayBuffers>> SOMAArray::read_next() {
     }
 
     // Configure query and allocate result buffers
-    mq_->setup_read();
+    array_buffer_ = mq_->setup_read();
 
     // Continue to submit the empty query on first read to return empty results
     if (mq_->is_empty_query()) {

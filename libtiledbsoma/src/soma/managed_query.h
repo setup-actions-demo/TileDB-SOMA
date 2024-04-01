@@ -309,7 +309,7 @@ class ManagedQuery {
      * @brief Configure query and allocate result buffers for reads.
      *
      */
-    void setup_read();
+    std::shared_ptr<ArrayBuffers> setup_read();
 
     /**
      * @brief Check if the query is complete.

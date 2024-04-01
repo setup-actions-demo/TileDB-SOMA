@@ -735,6 +735,8 @@ class SOMAArray : public SOMAObject {
 
     // Unoptimized method for computing nnz() (issue `count_cells` query)
     uint64_t nnz_slow();
+
+    std::shared_ptr<ArrayBuffers> array_buffer_ = nullptr;
 };
 
 }  // namespace tiledbsoma

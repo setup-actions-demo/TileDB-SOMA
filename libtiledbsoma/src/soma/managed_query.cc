@@ -96,11 +96,13 @@ void ManagedQuery::select_columns(
     }
 }
 
-void ManagedQuery::setup_read() {
+std::shared_ptr<ArrayBuffers> ManagedQuery::setup_read() {
     // If the query is complete, return so we do not submit it again
     auto status = query_->query_status();
+    buffers_ = std::make_shared<ArrayBuffers>();
+
     if (status == Query::Status::COMPLETE) {
-        return;
+        return buffers_;
     }
 
     // If the query is uninitialized, set the subarray for the query
@@ -139,13 +141,13 @@ void ManagedQuery::setup_read() {
 
     // Allocate and attach buffers
     LOG_TRACE("[ManagedQuery] allocate new buffers");
-    buffers_ = std::make_shared<ArrayBuffers>();
     for (auto& name : columns_) {
         LOG_DEBUG(fmt::format(
             "[ManagedQuery] [{}] Adding buffer for column '{}'", name_, name));
         buffers_->emplace(name, ColumnBuffer::create(array_, name));
         buffers_->at(name)->attach(*query_);
     }
+    return buffers_;
 }
 
 void ManagedQuery::submit_write() {

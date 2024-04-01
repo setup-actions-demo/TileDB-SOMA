@@ -94,12 +94,24 @@ void ArrowAdapter::release_schema(struct ArrowSchema* schema) {
 }
 
 void ArrowAdapter::release_array(struct ArrowArray* array) {
-    auto arrow_buffer = static_cast<ArrowBuffer*>(array->private_data);
+    // auto arrow_buffer = static_cast<ArrowBuffer*>(array->private_data);
 
+<<<<<<< Updated upstream
     // Delete the ArrowBuffer, which was allocated with new.
     // If the ArrowBuffer.buffer_ shared_ptr is the last reference to the
     // underlying ColumnBuffer, the ColumnBuffer will be deleted.
     delete arrow_buffer;
+=======
+    // LOG_TRACE(fmt::format(
+    //     "[ArrowAdapter] release_array {} use_count={}",
+    //     arrow_buffer->buffer_->name(),
+    //     arrow_buffer->buffer_.use_count()));
+
+    // // Delete the ArrowBuffer, which was allocated with new.
+    // // If the ArrowBuffer.buffer_ shared_ptr is the last reference to the
+    // // underlying ColumnBuffer, the ColumnBuffer will be deleted.
+    // delete arrow_buffer;
+>>>>>>> Stashed changes
 
     if (array->buffers != nullptr) {
         delete[] array->buffers;
@@ -299,7 +311,7 @@ ArrowAdapter::to_arrow(std::shared_ptr<ColumnBuffer> column) {
     //   deleted, which decrements the the `column` use count. When
     //   the `column` use count reaches 0, the ColumnBuffer data
     //   will be deleted.
-    auto arrow_buffer = new ArrowBuffer(column);
+    // auto arrow_buffer = new ArrowBuffer(column);
 
     array->length = column->size();
     array->null_count = 0;
@@ -310,7 +322,8 @@ ArrowAdapter::to_arrow(std::shared_ptr<ColumnBuffer> column) {
     array->children = nullptr;
     array->dictionary = nullptr;
     array->release = &release_array;
-    array->private_data = (void*)arrow_buffer;
+    // array->private_data = (void*)arrow_buffer;
+    array->private_data = nullptr;
 
     LOG_TRACE(fmt::format(
         "[ArrowAdapter] create array name='{}' use_count={}",
