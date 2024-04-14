@@ -8,14 +8,11 @@
     ## this returns a character similar to a formatted package version
     soma_lib_version <- libtiledbsoma_version(compact=TRUE)
     ## extract vector underlying package version, pick first two elements
-    rpkg_maj_min <-  unlist(unclass(rpkg_lib_version))[1:2]
+    #rpkg_maj_min <-  unlist(unclass(rpkg_lib_version))[1:2]
     ## split formatted package version at 'dots', turn to integer, pick first two
-    soma_maj_min <-  as.integer(strsplit(soma_lib_version, "\\.")[[1]])[1:2]
-    print(rpkg_lib_version)
-    print(soma_lib_version)
-    print(rpkg_maj_min)
-    print(soma_maj_min)
-    if (!all.equal(rpkg_maj_min, soma_maj_min)) {
+    #soma_maj_min <-  as.integer(strsplit(soma_lib_version, "\\.")[[1]])[1:2]
+    #if (!all.equal(rpkg_maj_min, soma_maj_min)) {
+    if (rpkg_lib_version != soma_lib_version) {
         msg <- sprintf("TileDB Core version %s used by TileDB-R package, but TileDB-SOMA uses %s",
                        sQuote(rpkg_lib_version), sQuote(soma_lib_version))
         stop(msg, call. = FALSE)
