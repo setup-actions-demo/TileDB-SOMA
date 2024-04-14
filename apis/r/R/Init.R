@@ -3,15 +3,8 @@
 ## .onAttach is also called when the package is 'attached' via 'library(tiledbsoma)'
 ## During package build and byte-code compilation and load check, both are called.
 .onLoad <- function(libname, pkgname) {
-    ## this returns a package_version
     rpkg_lib_version <- tiledb::tiledb_version(compact=TRUE)
-    ## this returns a character similar to a formatted package version
     soma_lib_version <- libtiledbsoma_version(compact=TRUE)
-    ## extract vector underlying package version, pick first two elements
-    #rpkg_maj_min <-  unlist(unclass(rpkg_lib_version))[1:2]
-    ## split formatted package version at 'dots', turn to integer, pick first two
-    #soma_maj_min <-  as.integer(strsplit(soma_lib_version, "\\.")[[1]])[1:2]
-    #if (!all.equal(rpkg_maj_min, soma_maj_min)) {
     if (rpkg_lib_version != soma_lib_version) {
         msg <- sprintf("TileDB Core version %s used by TileDB-R package, but TileDB-SOMA uses %s",
                        sQuote(rpkg_lib_version), sQuote(soma_lib_version))
