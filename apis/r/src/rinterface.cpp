@@ -126,6 +126,9 @@ SEXP soma_array_reader(const std::string& uri,
                sr_data->get()->num_rows(), sr_data->get()->names().size());
 
     const std::vector<std::string> names = sr_data->get()->names();
+    for (auto name : names) {
+      printf("XXX NAME %s\n", name.c_str());
+    }
     auto ncol = names.size();
     // Schema first
     auto schemaxp = nanoarrow_schema_owning_xptr();

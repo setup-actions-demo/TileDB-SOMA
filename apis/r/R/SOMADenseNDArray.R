@@ -81,8 +81,8 @@ SOMADenseNDArray <- R6::R6Class(
 
       tbl <- self$read_arrow_table(coords = coords, result_order = result_order, log_level = log_level)
       m <- matrix(as.numeric(tbl$GetColumnByName("soma_data")),
-                  nrow = length(unique(as.numeric(tbl$GetColumnByName("soma_dim_0")))),
-                  ncol = length(unique(as.numeric(tbl$GetColumnByName("soma_dim_1")))),
+                  nrow = length(unique(as.numeric(coords[[1]]))),
+                  ncol = length(unique(as.numeric(coords[[2]]))),
                   byrow = result_order == "ROW_MAJOR")
 
     },
