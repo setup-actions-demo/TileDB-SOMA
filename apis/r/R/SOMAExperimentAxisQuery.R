@@ -1035,6 +1035,7 @@ SOMAExperimentAxisQuery <- R6::R6Class(
       obsp_layers = NULL,
       varp_layers = NULL
     ) {
+
       check_package('SingleCellExperiment', version = .MINIMUM_SCE_VERSION())
       stopifnot(
         "'X_layers' must be a character vector" = is_character_or_null(X_layers),
@@ -1058,6 +1059,7 @@ SOMAExperimentAxisQuery <- R6::R6Class(
           is.character(varp_layers) ||
           is_scalar_logical(varp_layers)
       )
+
       # Load in colData
       obs <- private$.load_df('obs', index = obs_index, column_names = obs_column_names)
       # Load in rowData
@@ -1080,6 +1082,7 @@ SOMAExperimentAxisQuery <- R6::R6Class(
         obs_ids = row.names(obs)
       )
       names(layers) <- names(X_layers)
+
       # Load in reduced dimensions
       reduced_dims <- private$.load_sce_reduced_dims(
         obsm_layers = obsm_layers,
@@ -1090,28 +1093,30 @@ SOMAExperimentAxisQuery <- R6::R6Class(
         obsp_layers = obsp_layers,
         obs_ids = row.names(obs)
       )
-      # Load in the rowPairs
-      row_pairs <- private$.load_sce_row_pairs(
-        varp_layers = varp_layers,
-        var_ids = row.names(var)
-      )
-      # Create the SingleCellExperiment object
-      sce <- SingleCellExperiment::SingleCellExperiment(
-        layers,
-        reducedDims = reduced_dims,
-        rowPairs = row_pairs,
-        colPairs = col_pairs,
-        mainExpName = private$.measurement_name
-      )
-      if (ncol(var)) {
-        SummarizedExperiment::rowData(sce) <- as(var, 'DataFrame')
-      }
-      if (ncol(obs)) {
-        SummarizedExperiment::colData(sce) <- as(obs, 'DataFrame')
-      }
-      # Validate and return
-      methods::validObject(sce)
-      return(sce)
+#      # Load in the rowPairs
+#      row_pairs <- private$.load_sce_row_pairs(
+#        varp_layers = varp_layers,
+#        var_ids = row.names(var)
+#      )
+
+#      # Create the SingleCellExperiment object
+#      sce <- SingleCellExperiment::SingleCellExperiment(
+#        layers,
+#        reducedDims = reduced_dims,
+#        rowPairs = row_pairs,
+#        colPairs = col_pairs,
+#        mainExpName = private$.measurement_name
+#      )
+#      if (ncol(var)) {
+#        SummarizedExperiment::rowData(sce) <- as(var, 'DataFrame')
+#      }
+#      if (ncol(obs)) {
+#        SummarizedExperiment::colData(sce) <- as(obs, 'DataFrame')
+#      }
+#      # Validate and return
+#      methods::validObject(sce)
+#      return(sce)
+
     }
   ),
 
@@ -1379,34 +1384,37 @@ SOMAExperimentAxisQuery <- R6::R6Class(
       if (isTRUE(obsp_layers)) {
         obsp_layers <- NULL
       }
-      ms_obsp <- tryCatch(expr = self$ms$obsp$names(), error = null)
-      skip_col_pairs <- isFALSE(obsp_layers) || rlang::is_na(obsp_layers)
-      if (is.null(ms_obsp)) {
-        if (!skip_col_pairs && !is.null(obsp_layers)) {
-          warning(
-            "colPairs requested but none were found, skipping",
-            call. = FALSE,
-            immediate. = TRUE
-          )
-        }
-        skip_col_pairs <- TRUE
-      }
-      if (skip_col_pairs) {
-        return(list())
-      }
-      obsp_layers <- obsp_layers %||% ms_obsp
-      obsp_layers <- pad_names(obsp_layers)
-      assert_subset(x = obsp_layers, y = ms_obsp, type = 'nearest neighbor graph')
-      col_pairs <- lapply(
-        X = obsp_layers,
-        FUN = function(layer) {
-          mat <- private$.load_p_axis(layer, repr = "T")
-          dimnames(mat) <- list(obs_ids, obs_ids)
-          return(.mat_to_hits(mat))
-        }
-      )
-      return(stats::setNames(col_pairs, names(obsp_layers)))
+#      ms_obsp <- tryCatch(expr = self$ms$obsp$names(), error = null)
+      self$ms$obsp$names()
+
+#      skip_col_pairs <- isFALSE(obsp_layers) || rlang::is_na(obsp_layers)
+#      if (is.null(ms_obsp)) {
+#        if (!skip_col_pairs && !is.null(obsp_layers)) {
+#          warning(
+#            "colPairs requested but none were found, skipping",
+#            call. = FALSE,
+#            immediate. = TRUE
+#          )
+#        }
+#        skip_col_pairs <- TRUE
+#      }
+#      if (skip_col_pairs) {
+#        return(list())
+#      }
+#      obsp_layers <- obsp_layers %||% ms_obsp
+#      obsp_layers <- pad_names(obsp_layers)
+#      assert_subset(x = obsp_layers, y = ms_obsp, type = 'nearest neighbor graph')
+#      col_pairs <- lapply(
+#        X = obsp_layers,
+#        FUN = function(layer) {
+#          mat <- private$.load_p_axis(layer, repr = "T")
+#          dimnames(mat) <- list(obs_ids, obs_ids)
+#          return(.mat_to_hits(mat))
+#        }
+#      )
+#      return(stats::setNames(col_pairs, names(obsp_layers)))
     },
+
     .load_sce_row_pairs = function(varp_layers, var_ids) {
       stopifnot(
         is.null(varp_layers) || is.character(varp_layers) || is_scalar_logical(varp_layers),
@@ -1415,34 +1423,39 @@ SOMAExperimentAxisQuery <- R6::R6Class(
       if (isTRUE(varp_layers)) {
         varp_layers <- NULL
       }
-      ms_varp <- tryCatch(expr = self$ms$varp$names(), error = null)
-      skip_row_pairs <- isFALSE(varp_layers) || rlang::is_na(varp_layers)
-      if (is.null(ms_varp)) {
-        if (!skip_row_pairs && !is.null(varp_layers)) {
-          warning(
-            "rowPairs requested but none were found, skipping",
-            call. = FALSE,
-            immediate. = TRUE
-          )
-        }
-        skip_row_pairs <- TRUE
-      }
-      if (skip_row_pairs) {
-        return(list())
-      }
-      varp_layers <- varp_layers %||% ms_varp
-      varp_layers <- pad_names(varp_layers)
-      assert_subset(x = varp_layers, y = ms_varp, type = 'feature network')
-      row_pairs <- lapply(
-        X = varp_layers,
-        FUN = function(layer) {
-          mat <- private$.load_p_axis(layer, p_axis = 'varp')
-          dimnames(mat) <- list(var_ids, var_ids)
-          return(.mat_to_hits(mat))
-        }
-      )
-      return(stats::setNames(row_pairs, names(varp_layers)))
+
+#      ms_varp <- tryCatch(expr = self$ms$varp$names(), error = null)
+#      self$ms$varp$names()
+#      skip_row_pairs <- isFALSE(varp_layers) || rlang::is_na(varp_layers)
+#      if (is.null(ms_varp)) {
+#        if (!skip_row_pairs && !is.null(varp_layers)) {
+#          warning(
+#            "rowPairs requested but none were found, skipping",
+#            call. = FALSE,
+#            immediate. = TRUE
+#          )
+#        }
+#        skip_row_pairs <- TRUE
+#      }
+
+#      if (skip_row_pairs) {
+#        return(list())
+#      }
+#      varp_layers <- varp_layers %||% ms_varp
+#      varp_layers <- pad_names(varp_layers)
+#      assert_subset(x = varp_layers, y = ms_varp, type = 'feature network')
+
+#      row_pairs <- lapply(
+#        X = varp_layers,
+#        FUN = function(layer) {
+#          mat <- private$.load_p_axis(layer, p_axis = 'varp')
+#          dimnames(mat) <- list(var_ids, var_ids)
+#          return(.mat_to_hits(mat))
+#        }
+#      )
+#      return(stats::setNames(row_pairs, names(varp_layers)))
     },
+
     # Helper methods for loading Seurat assays
     .to_seurat_assay_v3 = function(
       counts,

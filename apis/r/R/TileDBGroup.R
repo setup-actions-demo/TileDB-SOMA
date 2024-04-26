@@ -400,6 +400,7 @@ TileDBGroup <- R6::R6Class(
         # mode and non-null tiledb_timestamp.
         stopifnot("FIXME" = is.null(private$.group_open_timestamp))
         group_handle <- tiledb::tiledb_group(self$uri, type = "READ", ctx = private$.tiledb_ctx)
+        #cat("GROUP OPEN ", private$.mode, "\n")
       }
 
       members <- private$get_all_members_uncached_read(group_handle)
@@ -413,6 +414,7 @@ TileDBGroup <- R6::R6Class(
 
       if (private$.mode == "WRITE") {
         tiledb::tiledb_group_close(group_handle)
+        #cat("GROUP CLOSE ", private$.mode, "\n")
       }
     },
 
