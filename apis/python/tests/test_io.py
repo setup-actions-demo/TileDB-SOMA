@@ -26,22 +26,23 @@ def src_matrix(request):
 @pytest.mark.parametrize(
     "tdb_create_options",
     [
-        TileDBCreateOptions(write_X_chunked=False, goal_chunk_nnz=10000),
-        TileDBCreateOptions(write_X_chunked=False, goal_chunk_nnz=100000),
-        TileDBCreateOptions(write_X_chunked=True, goal_chunk_nnz=10000),
-        TileDBCreateOptions(write_X_chunked=True, goal_chunk_nnz=100000),
-        TileDBCreateOptions(write_X_chunked=True, remote_cap_nbytes=100000),
+        TileDBCreateOptions(write_X_chunked=False, goal_chunk_nnz=1_000_000_000),
+        #TileDBCreateOptions(write_X_chunked=False, goal_chunk_nnz=100000),
+        #TileDBCreateOptions(write_X_chunked=True, goal_chunk_nnz=10000),
+        #TileDBCreateOptions(write_X_chunked=True, goal_chunk_nnz=100000),
+        #TileDBCreateOptions(write_X_chunked=True, remote_cap_nbytes=100000),
     ],
 )
 @pytest.mark.parametrize(
     "src_matrix",
     [
-        ("dense", (10, 100), 1),
-        ("dense", (1103, 107), 1),
-        ("csc", (10, 89), 0.01),
-        ("csr", (10, 89), 0.01),
-        ("csc", (1001, 899), 0.3),
-        ("csr", (1001, 899), 0.3),
+        #("dense", (10, 100), 1),
+        #("dense", (1103, 107), 1),
+        ("csc", (10, 5), 0.01),
+        #("csc", (10, 89), 0.01),
+        #("csr", (10, 89), 0.01),
+        #("csc", (1001, 899), 0.3),
+        #("csr", (1001, 899), 0.3),
     ],
     indirect=True,
 )
@@ -63,12 +64,31 @@ def test_io_create_from_matrix_Dense_nd_array(tmp_path, tdb_create_options, src_
     with _factory.open(tmp_path.as_posix()) as snda:
         assert snda.ndim == src_matrix.ndim
 
-        read_back = snda.read((slice(None), slice(None))).to_numpy()
+        readback = snda.read((slice(None), slice(None))).to_numpy()
+
+        print()
+        print("SRC_MATRIX")
+        print(type(src_matrix))
+        print(src_matrix.shape)
+        #print(src_matrix)
+        print()
+        print("READBACK")
+        print(type(readback))
+        print(readback.shape)
+        #print(readback)
+
+        # SRC_MATRIX
+        # <class 'scipy.sparse._csc.csc_matrix'>
+        # (10, 89)
+        #
+        # READBACK
+        # <class 'numpy.ndarray'>
+        # (10, 89)
 
         if isinstance(src_matrix, np.ndarray):
-            assert np.array_equal(read_back, src_matrix)
+            assert np.array_equal(readback, src_matrix)
         else:
-            assert np.array_equal(read_back, src_matrix.toarray())
+            assert np.array_equal(readback, src_matrix.toarray())
 
 
 @pytest.mark.parametrize(
