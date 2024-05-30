@@ -45,7 +45,11 @@ void SOMACollection::create(
     std::string_view uri,
     std::shared_ptr<SOMAContext> ctx,
     std::optional<TimestampRange> timestamp) {
-    SOMAGroup::create(ctx, uri, "SOMACollection", timestamp);
+    try {
+        SOMAGroup::create(ctx, uri, "SOMACollection", timestamp);
+    } catch (TileDBError& e) {
+        throw TileDBSOMAError(e.what());
+    }
 }
 
 std::unique_ptr<SOMACollection> SOMACollection::open(
@@ -89,7 +93,7 @@ std::shared_ptr<SOMACollection> SOMACollection::add_new_collection(
     SOMACollection::create(uri, ctx, timestamp);
     std::shared_ptr<SOMACollection> member = SOMACollection::open(
         uri, OpenMode::read, ctx, timestamp);
-    this->set(std::string(uri), uri_type, std::string(key));
+    this->set(std::string(uri), uri_type, std::string(key), "SOMAGroup");
     children_[std::string(key)] = member;
     return member;
 }
@@ -117,7 +121,7 @@ std::shared_ptr<SOMAExperiment> SOMACollection::add_new_experiment(
         timestamp);
     std::shared_ptr<SOMAExperiment> member = SOMAExperiment::open(
         uri, OpenMode::read, ctx, timestamp);
-    this->set(std::string(uri), uri_type, std::string(key));
+    this->set(std::string(uri), uri_type, std::string(key), "SOMAGroup");
     children_[std::string(key)] = member;
     return member;
 }
@@ -145,7 +149,7 @@ std::shared_ptr<SOMAMeasurement> SOMACollection::add_new_measurement(
         timestamp);
     std::shared_ptr<SOMAMeasurement> member = SOMAMeasurement::open(
         uri, OpenMode::read, ctx, timestamp);
-    this->set(std::string(uri), uri_type, std::string(key));
+    this->set(std::string(uri), uri_type, std::string(key), "SOMAGroup");
     children_[std::string(key)] = member;
     return member;
 }
@@ -175,7 +179,7 @@ std::shared_ptr<SOMADataFrame> SOMACollection::add_new_dataframe(
         timestamp);
     std::shared_ptr<SOMADataFrame> member = SOMADataFrame::open(
         uri, OpenMode::read, ctx, column_names, result_order, timestamp);
-    this->set(std::string(uri), uri_type, std::string(key));
+    this->set(std::string(uri), uri_type, std::string(key), "SOMAArray");
     children_[std::string(key)] = member;
     return member;
 }
@@ -205,7 +209,7 @@ std::shared_ptr<SOMADenseNDArray> SOMACollection::add_new_dense_ndarray(
         timestamp);
     std::shared_ptr<SOMADenseNDArray> member = SOMADenseNDArray::open(
         uri, OpenMode::read, ctx, column_names, result_order, timestamp);
-    this->set(std::string(uri), uri_type, std::string(key));
+    this->set(std::string(uri), uri_type, std::string(key), "SOMAArray");
     children_[std::string(key)] = member;
     return member;
 }
@@ -235,7 +239,7 @@ std::shared_ptr<SOMASparseNDArray> SOMACollection::add_new_sparse_ndarray(
         timestamp);
     std::shared_ptr<SOMASparseNDArray> member = SOMASparseNDArray::open(
         uri, OpenMode::read, ctx, column_names, result_order, timestamp);
-    this->set(std::string(uri), uri_type, std::string(key));
+    this->set(std::string(uri), uri_type, std::string(key), "SOMAArray");
     children_[std::string(key)] = member;
     return member;
 }
