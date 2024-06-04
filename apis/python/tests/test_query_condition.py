@@ -7,7 +7,6 @@ import pytest
 import tiledbsoma.pytiledbsoma as clib
 from tiledbsoma._exception import SOMAError
 from tiledbsoma._query_condition import QueryCondition
-import tiledb
 
 VERBOSE = False
 

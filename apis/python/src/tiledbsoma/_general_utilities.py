@@ -5,7 +5,6 @@
 
 """General utility functions.
 """
-import os
 import platform
 import sys
 from re import fullmatch
@@ -75,6 +74,7 @@ def get_libtiledbsoma_core_version() -> str:
 TILEDB_CORE_MISMATCHED_VERSIONS_ERROR_LEVEL_VAR = (
     "TILEDB_CORE_MISMATCHED_VERSIONS_ERROR_LEVEL"
 )
+
 
 def show_package_versions() -> None:
     """Nominal use is for bug reports, so issue filers and issue fixers can be on

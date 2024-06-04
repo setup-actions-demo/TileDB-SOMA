@@ -30,14 +30,6 @@
  * This file defines the SOMACollection bindings.
  */
 
-#include <pybind11/numpy.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/pytypes.h>
-#include <pybind11/stl.h>
-#include <pybind11/stl_bind.h>
-
-#include <tiledbsoma/tiledbsoma>
-
 #include "common.h"
 
 namespace libtiledbsomacpp {
