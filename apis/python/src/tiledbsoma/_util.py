@@ -350,10 +350,10 @@ def cast_values_to_target_schema(
     target_schema = []
     for i, input_field in enumerate(values.schema):
         name = input_field.name
-        
-        if name in schema:
+
+        if name in schema.names:
             target_field = schema.field(name)
-            
+
             if pa.types.is_dictionary(target_field.type):
                 if not pa.types.is_dictionary(input_field.type):
                     raise ValueError(f"{name} requires dictionary entry")
@@ -383,39 +383,13 @@ def cast_values_to_target_schema(
                 values = values.set_column(
                     i, name, pa.DictionaryArray.from_pandas(df, type=target_field.type)
                 )
-                
+
+            target_field = target_field.with_nullable(input_field.nullable)
             if pa.types.is_boolean(input_field.type):
                 target_schema.append(target_field.with_type(pa.uint8()))
             else:
                 target_schema.append(target_field)
         else:
-            if pa.types.is_dictionary(input_field.type):
-                col = values.column(name).combine_chunks()
-                if pa.types.is_boolean(input_field.type.value_type):
-                    col = col.cast(
-                        pa.dictionary(
-                            input_field.type.index_type,
-                            pa.uint8(),
-                            input_field.type.ordered,
-                        )
-                    )
-                new_enmr = clib_array.extend_enumeration(name, col)
-
-                if pa.types.is_binary(
-                    input_field.type.value_type
-                ) or pa.types.is_large_binary(input_field.type.value_type):
-                    new_enmr = np.array(new_enmr, "S")
-                elif pa.types.is_boolean(input_field.type.value_type):
-                    new_enmr = np.array(new_enmr, bool)
-
-                df = pd.Categorical(
-                    col.to_pandas(),
-                    ordered=input_field.type.ordered,
-                    categories=new_enmr,
-                )
-                values = values.set_column(
-                    i, name, pa.DictionaryArray.from_pandas(df, type=input_field.type)
-                )
             target_schema.append(input_field)
 
     new_schema = pa.schema(target_schema, values.schema.metadata)

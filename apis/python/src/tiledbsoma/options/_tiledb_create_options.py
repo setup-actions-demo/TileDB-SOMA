@@ -300,25 +300,29 @@ def _dig_platform_config(
 # Filter handling and construction.
 #
 
-_FILTERS: Mapping[str, str] = {
-    "GzipFilter": "GZIP",
-    "ZstdFilter": "ZSTD",
-    "LZ4Filter": "LZ4",
-    "Bzip2Filter": "BZIP2",
-    "RleFilter": "RLE",
-    "DeltaFilter": "DELTA",
-    "DoubleDeltaFilter": "DOUBLE_DELTA",
-    "BitWidthReductionFilter": "BIT_WIDTH_REDUCTION",
-    "BitShuffleFilter": "BITSHUFFLE",
-    "ByteShuffleFilter": "BYTESHUFFLE",
-    "PositiveDeltaFilter": "POSITIVE_DELTA",
-    "ChecksumMD5Filter": "CHECKSUM_MD5",
-    "ChecksumSHA256Filter": "CHECKSUM_SHA256",
-    "DictionaryFilter": "DICTIONARY",
-    "FloatScaleFilter": "SCALE_FLOAT",
-    "XORFilter": "XOR",
-    "WebpFilter": "WEBP",
-    "NoOpFilter": "NONE",
+# _FILTERS: Mapping[str, str] = {
+#     "GzipFilter": "GZIP",
+#     "ZstdFilter": "ZSTD",
+#     "LZ4Filter": "LZ4",
+#     "Bzip2Filter": "BZIP2",
+#     "RleFilter": "RLE",
+#     "DeltaFilter": "DELTA",
+#     "DoubleDeltaFilter": "DOUBLE_DELTA",
+#     "BitWidthReductionFilter": "BIT_WIDTH_REDUCTION",
+#     "BitShuffleFilter": "BITSHUFFLE",
+#     "ByteShuffleFilter": "BYTESHUFFLE",
+#     "PositiveDeltaFilter": "POSITIVE_DELTA",
+#     "ChecksumMD5Filter": "CHECKSUM_MD5",
+#     "ChecksumSHA256Filter": "CHECKSUM_SHA256",
+#     "DictionaryFilter": "DICTIONARY",
+#     "FloatScaleFilter": "SCALE_FLOAT",
+#     "XORFilter": "XOR",
+#     "WebpFilter": "WEBP",
+#     "NoOpFilter": "NONE",
+# }
+
+_FILTERS: Mapping[str, Type[tiledb.Filter]] = {
+    cls.__name__: cls for cls in tiledb.FilterList.filter_type_cc_to_python.values()
 }
 
 

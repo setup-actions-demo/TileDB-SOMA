@@ -40,8 +40,6 @@ from anndata._core.sparse_dataset import SparseDataset
 from somacore.options import PlatformConfig
 from typing_extensions import get_args
 
-import tiledb
-
 from .. import (
     Collection,
     DataFrame,
@@ -54,7 +52,7 @@ from .. import (
     eta,
     logging,
 )
-from .._arrow_types import df_to_arrow, is_string_dtypelike, tiledb_type_from_arrow_type
+from .._arrow_types import df_to_arrow
 from .._collection import AnyTileDBCollection, CollectionBase
 from .._common_nd_array import NDArray
 from .._constants import SOMA_JOINID
@@ -1108,8 +1106,6 @@ def _write_arrow_table(
     tiledb_create_options: TileDBCreateOptions,
 ) -> None:
     """Handles num-bytes capacity for remote object stores."""
-    print("handle.schema:", handle.schema.names)
-    print("_write_arrow_table", arrow_table.schema.names)
     cap = tiledb_create_options.remote_cap_nbytes
     if arrow_table.nbytes > cap:
         n = len(arrow_table)
@@ -1496,17 +1492,7 @@ def _update_dataframe(
 
     old_keys = set(old_sig.keys())
     new_keys = set(new_sig.keys())
-    # drop_keys = old_keys.difference(new_keys)
-    # add_keys = new_keys.difference(old_keys)
     common_keys = old_keys.intersection(new_keys)
-
-    # print("old_keys:", old_keys)
-    # print("new_keys:", new_keys)
-    # print("drop_keys:", drop_keys)
-    # print("add_keys:", add_keys)
-    # print("common_keys:", common_keys)
-
-    # tiledb_create_options = TileDBCreateOptions.from_platform_config(platform_config)
 
     msgs = []
     for key in common_keys:
@@ -1518,7 +1504,7 @@ def _update_dataframe(
     if msgs:
         msg = ", ".join(msgs)
         raise ValueError(f"unsupported type updates: {msg}")
-    
+
     with DataFrame.open(
         sdf.uri, mode="r", context=context, platform_config=platform_config
     ) as sdf_r:
@@ -1533,73 +1519,15 @@ def _update_dataframe(
             raise ValueError(
                 f"{caller_name}: old and new data must have the same row count; got {len(old_jids)} != {len(new_jids)}",
             )
-        
-        df_mod = new_data
-        df_mod.reset_index(inplace=True)
-        id_column_name = default_index_name
-        if id_column_name is not None:
-            if id_column_name in df_mod:
-                if "index" in df_mod:
-                    df_mod.drop(columns=["index"], inplace=True)
+
+        new_data.reset_index(inplace=True)
+        if default_index_name is not None:
+            if default_index_name in new_data:
+                if "index" in new_data:
+                    new_data.drop(columns=["index"], inplace=True)
             else:
-                df_mod.rename(columns={"index": id_column_name}, inplace=True)
-                
-        schema = df_to_arrow(df_mod).schema
-        sdf_r._handle._handle.update(schema)
-        print()
-        print("_update_dataframe:", sdf_r.schema.names)
-
-
-    # se = tiledb.ArraySchemaEvolution(sdf.context.tiledb_ctx)
-    # for drop_key in drop_keys:
-    #     se.drop_attribute(drop_key)
-
-    # arrow_table = df_to_arrow(new_data)
-    # arrow_schema = arrow_table.schema.remove_metadata()
-
-    # for add_key in add_keys:
-    #     # Don't directly use the new dataframe's dtypes. Go through the
-    #     # to-Arrow-schema logic, and back, as this recapitulates the original
-    #     # schema-creation logic.
-    #     atype = arrow_schema.field(add_key).type
-    #     dtype = tiledb_type_from_arrow_type(atype)
-
-    #     enum_label: Optional[str] = None
-    #     if pa.types.is_dictionary(arrow_table.schema.field(add_key).type):
-    #         enum_label = add_key
-    #         dt = cast(pd.CategoricalDtype, new_data[add_key].dtype)
-    #         se.add_enumeration(
-    #             tiledb.Enumeration(
-    #                 name=add_key, ordered=atype.ordered, values=list(dt.categories)
-    #             )
-    #         )
-
-    #     filters = tiledb_create_options.attr_filters_tiledb(add_key, ["ZstdFilter"])
-
-    #     # An update can create (or drop) columns, or mutate existing ones.  A
-    #     # brand-new column might have nulls in it -- or it might not.  And a
-    #     # subsequent mutator-update might set null values to non-null -- or vice
-    #     # versa. Therefore we must be careful to set nullability for all types
-    #     # we want to be nullable: principal use-case being pd.NA / NaN in
-    #     # string columns which map to TileDB nullity.
-    #     #
-    #     # Note: this must match what DataFrame.create does:
-    #     # * DataFrame.create sets nullability for obs/var columns on initial ingest
-    #     # * Here, we set nullabiliity for obs/var columns on update_obs
-    #     # Users should get the same behavior either way.
-    #     nullable = is_string_dtypelike(dtype)
-
-    #     se.add_attribute(
-    #         tiledb.Attr(
-    #             name=add_key,
-    #             dtype=dtype,
-    #             filters=filters,
-    #             enum_label=enum_label,
-    #             nullable=nullable,
-    #         )
-    #     )
-
-    # se.array_evolve(uri=sdf.uri)
+                new_data.rename(columns={"index": default_index_name}, inplace=True)
+        sdf_r._handle._handle.update(df_to_arrow(new_data).schema)
 
     _write_dataframe(
         df_uri=sdf.uri,
