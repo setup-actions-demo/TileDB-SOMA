@@ -1108,6 +1108,8 @@ def _write_arrow_table(
     tiledb_create_options: TileDBCreateOptions,
 ) -> None:
     """Handles num-bytes capacity for remote object stores."""
+    print("handle.schema:", handle.schema.names)
+    print("_write_arrow_table", arrow_table.schema.names)
     cap = tiledb_create_options.remote_cap_nbytes
     if arrow_table.nbytes > cap:
         n = len(arrow_table)
@@ -1492,6 +1494,31 @@ def _update_dataframe(
         new_data, default_index_name
     )
 
+    old_keys = set(old_sig.keys())
+    new_keys = set(new_sig.keys())
+    # drop_keys = old_keys.difference(new_keys)
+    # add_keys = new_keys.difference(old_keys)
+    common_keys = old_keys.intersection(new_keys)
+
+    # print("old_keys:", old_keys)
+    # print("new_keys:", new_keys)
+    # print("drop_keys:", drop_keys)
+    # print("add_keys:", add_keys)
+    # print("common_keys:", common_keys)
+
+    # tiledb_create_options = TileDBCreateOptions.from_platform_config(platform_config)
+
+    msgs = []
+    for key in common_keys:
+        old_type = old_sig[key]
+        new_type = new_sig[key]
+
+        if old_type != new_type:
+            msgs.append(f"{key} type {old_type} != {new_type}")
+    if msgs:
+        msg = ", ".join(msgs)
+        raise ValueError(f"unsupported type updates: {msg}")
+    
     with DataFrame.open(
         sdf.uri, mode="r", context=context, platform_config=platform_config
     ) as sdf_r:
@@ -1506,31 +1533,22 @@ def _update_dataframe(
             raise ValueError(
                 f"{caller_name}: old and new data must have the same row count; got {len(old_jids)} != {len(new_jids)}",
             )
+        
+        df_mod = new_data
+        df_mod.reset_index(inplace=True)
+        id_column_name = default_index_name
+        if id_column_name is not None:
+            if id_column_name in df_mod:
+                if "index" in df_mod:
+                    df_mod.drop(columns=["index"], inplace=True)
+            else:
+                df_mod.rename(columns={"index": id_column_name}, inplace=True)
+                
+        schema = df_to_arrow(df_mod).schema
+        sdf_r._handle._handle.update(schema)
+        print()
+        print("_update_dataframe:", sdf_r.schema.names)
 
-    old_keys = set(old_sig.keys())
-    new_keys = set(new_sig.keys())
-    drop_keys = old_keys.difference(new_keys)
-    add_keys = new_keys.difference(old_keys)
-    common_keys = old_keys.intersection(new_keys)
-
-    print("old_keys:", old_keys)
-    print("new_keys:", new_keys)
-    print("drop_keys:", drop_keys)
-    print("add_keys:", add_keys)
-    print("common_keys:", common_keys)
-
-    # tiledb_create_options = TileDBCreateOptions.from_platform_config(platform_config)
-
-    # msgs = []
-    # for key in common_keys:
-    #     old_type = old_sig[key]
-    #     new_type = new_sig[key]
-
-    #     if old_type != new_type:
-    #         msgs.append(f"{key} type {old_type} != {new_type}")
-    # if msgs:
-    #     msg = ", ".join(msgs)
-    #     raise ValueError(f"unsupported type updates: {msg}")
 
     # se = tiledb.ArraySchemaEvolution(sdf.context.tiledb_ctx)
     # for drop_key in drop_keys:

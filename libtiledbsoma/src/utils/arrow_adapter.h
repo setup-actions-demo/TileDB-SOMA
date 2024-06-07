@@ -228,6 +228,8 @@ class ArrowAdapter {
 
     static enum ArrowType to_nanoarrow_type(std::string_view sv);
 
+    static bool _isvar(const char* format);
+
    private:
     static std::pair<const void*, std::size_t> _get_data_and_length(
         Enumeration& enmr, const void* dst);
@@ -251,8 +253,6 @@ class ArrowAdapter {
         std::shared_ptr<Context> ctx, std::string name, T* b) {
         return Dimension::create<T>(*ctx, name, {b[0], b[1]}, b[2]);
     }
-
-    static bool _isvar(const char* format);
 
     static FilterList _create_filter_list(
         std::string filters, std::shared_ptr<Context> ctx);
