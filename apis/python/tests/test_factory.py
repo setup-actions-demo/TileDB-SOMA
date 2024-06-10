@@ -6,9 +6,10 @@ import pytest
 
 import tiledbsoma as soma
 from tiledbsoma import _constants
-import tiledb
 
 UNKNOWN_ENCODING_VERSION = "3141596"
+
+tiledb = pd = pytest.importorskip("tiledb")
 
 
 @pytest.fixture

@@ -232,7 +232,7 @@ def test_dense_nd_array_slicing(tmp_path, io):
     cfg = {}
     if "cfg" in io:
         cfg = io["cfg"]
-    context = SOMATileDBContext(tiledb_ctx=tiledb.Ctx(cfg))
+    context = SOMATileDBContext(cfg)
 
     nr = 4
     nc = 6
@@ -262,13 +262,13 @@ def test_dense_nd_array_slicing(tmp_path, io):
             "name": "negative",
             "shape": (10,),
             "coords": (-1,),
-            "throws": (RuntimeError, tiledb.cc.TileDBError),
+            "throws": RuntimeError,
         },
         {
             "name": "12 in 10 domain",
             "shape": (10,),
             "coords": (12,),
-            "throws": (RuntimeError, tiledb.cc.TileDBError),
+            "throws": RuntimeError,
         },
         {
             "name": "too many dims",
