@@ -4,6 +4,7 @@
 # Licensed under the MIT License.
 
 import datetime
+import functools
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -32,10 +33,10 @@ def _default_config(
     return cfg
 
 
-# @functools.lru_cache(maxsize=None)
-# def _default_global_ctx() -> tiledb.Ctx:
-#     """Lazily builds a default TileDB Context with the default config."""
-#     return tiledb.Ctx(_default_config({}))
+@functools.lru_cache(maxsize=None)
+def _default_global_native_context() -> clib.SOMAContext:
+    """Lazily builds a default TileDB Context with the default config."""
+    return clib.SOMAContext({k: str(v) for k, v in _default_config({}).items()})
 
 
 def _maybe_timestamp_ms(input: Optional[OpenTimestamp]) -> Optional[int]:
@@ -150,10 +151,13 @@ class SOMATileDBContext(ContextBase):
         """The C++ SOMAContext for this SOMA context."""
         with self._lock:
             if self._native_context is None:
-                cfg = self._internal_tiledb_config()
-                self._native_context = clib.SOMAContext(
-                    {k: str(v) for k, v in cfg.items()}
-                )
+                if self._initial_config is None:
+                    self._native_context = _default_global_native_context()
+                else:
+                    cfg = self._internal_tiledb_config()
+                    self._native_context = clib.SOMAContext(
+                        {k: str(v) for k, v in cfg.items()}
+                    )
             return self._native_context
 
     @property

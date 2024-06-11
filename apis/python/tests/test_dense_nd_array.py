@@ -7,7 +7,14 @@ import pytest
 
 import tiledbsoma as soma
 from tiledbsoma.options import SOMATileDBContext
-import tiledb
+
+try:
+    import tiledb
+
+    hastiledb = True
+except ModuleNotFoundError:
+    hastiledb = False
+
 
 from . import NDARRAY_ARROW_TYPES_NOT_SUPPORTED, NDARRAY_ARROW_TYPES_SUPPORTED
 from ._util import raises_no_typeguard
@@ -48,8 +55,9 @@ def test_dense_nd_array_create_ok(
     assert not a.schema.field("soma_data").nullable
 
     # Validate TileDB array schema
-    with tiledb.open(tmp_path.as_posix()) as A:
-        assert not A.schema.sparse
+    if hastiledb:
+        with tiledb.open(tmp_path.as_posix()) as A:
+            assert not A.schema.sparse
 
     # Ensure read mode uses clib object
     with soma.DenseNDArray.open(tmp_path.as_posix(), "r") as A:
@@ -91,8 +99,9 @@ def test_dense_nd_array_read_write_tensor(tmp_path, shape: Tuple[int, ...]):
         assert t.equals(pa.Tensor.from_numpy(data.transpose()))
 
     # Validate TileDB array schema
-    with tiledb.open(tmp_path.as_posix()) as A:
-        assert not A.schema.sparse
+    if hastiledb:
+        with tiledb.open(tmp_path.as_posix()) as A:
+            assert not A.schema.sparse
 
     # write a single-value sub-array and recheck
     with soma.DenseNDArray.open(tmp_path.as_posix(), "w") as c:
@@ -366,9 +375,10 @@ def test_tile_extents(tmp_path):
         },
     ).close()
 
-    with tiledb.open(tmp_path.as_posix()) as A:
-        assert A.schema.domain.dim(0).tile == 100
-        assert A.schema.domain.dim(1).tile == 2048
+    if hastiledb:
+        with tiledb.open(tmp_path.as_posix()) as A:
+            assert A.schema.domain.dim(0).tile == 100
+            assert A.schema.domain.dim(1).tile == 2048
 
 
 def test_timestamped_ops(tmp_path):
