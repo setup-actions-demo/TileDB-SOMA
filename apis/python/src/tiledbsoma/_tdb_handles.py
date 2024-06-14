@@ -338,7 +338,6 @@ class SOMAArrayWrapper(Wrapper[_ArrType]):
         timestamp: int,
     ) -> clib.SOMAArray:
         open_mode = clib.OpenMode.read if mode == "r" else clib.OpenMode.write
-
         return cls._ARRAY_WRAPPED_TYPE.open(
             uri,
             mode=open_mode,
@@ -360,6 +359,10 @@ class SOMAArrayWrapper(Wrapper[_ArrType]):
     @property
     def schema(self) -> pa.Schema:
         return self._handle.schema
+
+    @property
+    def config_options(self) -> clib.PlatformConfig:
+        return self._handle.config_options
 
     @property
     def meta(self) -> "MetadataWrapper":
