@@ -70,7 +70,9 @@ Suggests:
     S4Vectors,
     jsonlite,
     iterators,
-    itertools
+    itertools,
+    tinytest,
+    tinyexpect
 VignetteBuilder: knitr
 Config/testthat/edition: 2
 OS_type: unix
