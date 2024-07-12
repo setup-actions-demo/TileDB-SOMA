@@ -106,6 +106,7 @@ _NDArr = TypeVar("_NDArr", bound=NDArray)
 _TDBO = TypeVar("_TDBO", bound=SOMAObject[RawHandle])
 
 
+Uns = Mapping[str, Any]
 AdditionalMetadata = Optional[Dict[str, Metadatum]]
 
 
@@ -2482,7 +2483,7 @@ def _chunk_is_contained_in_axis(
 
 def _maybe_ingest_uns(
     m: Measurement,
-    uns: Mapping[str, object],
+    uns: Uns,
     *,
     platform_config: Optional[PlatformConfig],
     context: Optional[SOMATileDBContext],
