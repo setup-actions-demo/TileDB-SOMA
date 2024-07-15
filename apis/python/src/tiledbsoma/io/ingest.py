@@ -387,9 +387,19 @@ def from_h5ad(
 
 
 class IngestCtx(TypedDict):
+    """Convenience type-alias for kwargs passed to ingest functions."""
+
     context: Optional[SOMATileDBContext]
     ingestion_params: IngestionParams
     additional_metadata: AdditionalMetadata
+
+
+class PlatformCtx(IngestCtx):
+    """Convenience type-alias for kwargs passed to ingest functions.
+
+    Extends :class:`IngestCtx`, adds ``platform_config``."""
+
+    platform_config: Optional[PlatformConfig]
 
 
 # ----------------------------------------------------------------
@@ -487,6 +497,7 @@ def from_anndata(
         ingestion_params=ingestion_params,
         additional_metadata=additional_metadata,
     )
+    platform_ctx: PlatformCtx = dict(**ingest_ctx, platform_config=platform_config)
 
     # Must be done first, to create the parent directory.
     experiment = _create_or_open_collection(Experiment, experiment_uri, **ingest_ctx)
@@ -498,9 +509,8 @@ def from_anndata(
         df_uri,
         conversions.decategoricalize_obs_or_var(anndata.obs),
         id_column_name=obs_id_name,
-        platform_config=platform_config,
         axis_mapping=jidmaps.obs_axis,
-        **ingest_ctx,
+        **platform_ctx,
     ) as obs:
         _maybe_set(experiment, "obs", obs, use_relative_uri=use_relative_uri)
 
@@ -538,10 +548,9 @@ def from_anndata(
             _maybe_ingest_uns(
                 measurement,
                 anndata.uns,
-                platform_config=platform_config,
                 use_relative_uri=use_relative_uri,
                 uns_keys=uns_keys,
-                **ingest_ctx,
+                **platform_ctx,
             )
 
             # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -550,10 +559,9 @@ def from_anndata(
                 _util.uri_joinpath(measurement_uri, "var"),
                 conversions.decategoricalize_obs_or_var(anndata.var),
                 id_column_name=var_id_name,
-                platform_config=platform_config,
                 # Layer existence is pre-checked in the registration phase
                 axis_mapping=jidmaps.var_axes[measurement_name],
-                **ingest_ctx,
+                **platform_ctx,
             ) as var:
                 _maybe_set(measurement, "var", var, use_relative_uri=use_relative_uri)
 
@@ -587,10 +595,9 @@ def from_anndata(
                         X_kind,
                         _util.uri_joinpath(measurement_X_uri, X_layer_name),
                         anndata.X,
-                        platform_config=platform_config,
                         axis_0_mapping=jidmaps.obs_axis,
                         axis_1_mapping=jidmaps.var_axes[measurement_name],
-                        **ingest_ctx,
+                        **platform_ctx,
                     ) as data:
                         _maybe_set(
                             x, X_layer_name, data, use_relative_uri=use_relative_uri
@@ -601,10 +608,9 @@ def from_anndata(
                         X_kind,
                         _util.uri_joinpath(measurement_X_uri, layer_name),
                         layer,
-                        platform_config=platform_config,
                         axis_0_mapping=jidmaps.obs_axis,
                         axis_1_mapping=jidmaps.var_axes[measurement_name],
-                        **ingest_ctx,
+                        **platform_ctx,
                     ) as layer_data:
                         _maybe_set(
                             x, layer_name, layer_data, use_relative_uri=use_relative_uri
@@ -648,10 +654,9 @@ def from_anndata(
                                     conversions.to_tiledb_supported_array_type(
                                         key, val
                                     ),
-                                    platform_config=platform_config,
                                     axis_0_mapping=axis_0_mapping,
                                     axis_1_mapping=_axis_1_mapping,
-                                    **ingest_ctx,
+                                    **platform_ctx,
                                 ) as arr:
                                     _maybe_set(
                                         coll,
@@ -689,9 +694,8 @@ def from_anndata(
                             _util.uri_joinpath(raw_uri, "var"),
                             conversions.decategoricalize_obs_or_var(anndata.raw.var),
                             id_column_name=var_id_name,
-                            platform_config=platform_config,
                             axis_mapping=jidmaps.var_axes["raw"],
-                            **ingest_ctx,
+                            **platform_ctx,
                         ) as var:
                             _maybe_set(
                                 raw_measurement,
@@ -717,10 +721,9 @@ def from_anndata(
                                 SparseNDArray,
                                 _util.uri_joinpath(raw_X_uri, raw_X_layer_name),
                                 anndata.raw.X,
-                                platform_config=platform_config,
                                 axis_0_mapping=jidmaps.obs_axis,
                                 axis_1_mapping=jidmaps.var_axes["raw"],
-                                **ingest_ctx,
+                                **platform_ctx,
                             ) as rm_x_data:
                                 _maybe_set(
                                     rm_x,
@@ -2571,16 +2574,19 @@ def _ingest_uns_node(
         coll.metadata[key] = value
         return
 
+    platform_ctx: PlatformCtx = dict(
+        platform_config=platform_config,
+        context=context,
+        ingestion_params=ingestion_params,
+        additional_metadata=additional_metadata,
+    )
     if isinstance(value, Mapping):
         # Mappings are represented as sub-dictionaries.
         _ingest_uns_dict(
             coll,
             key,
             value,
-            platform_config=platform_config,
-            context=context,
-            ingestion_params=ingestion_params,
-            additional_metadata=additional_metadata,
+            **platform_ctx,
             use_relative_uri=use_relative_uri,
             level=level + 1,
         )
@@ -2592,11 +2598,8 @@ def _ingest_uns_node(
             _util.uri_joinpath(coll.uri, key),
             value,
             None,
-            platform_config=platform_config,
-            context=context,
-            ingestion_params=ingestion_params,
-            additional_metadata=additional_metadata,
             axis_mapping=AxisIDMapping.identity(num_rows),
+            **platform_ctx,
         ) as df:
             _maybe_set(coll, key, df, use_relative_uri=use_relative_uri)
         return
@@ -2614,25 +2617,11 @@ def _ingest_uns_node(
             # In the wild it's quite common to see arrays of strings in uns data.
             # Frequent example: uns["louvain_colors"].
             _ingest_uns_string_array(
-                coll,
-                key,
-                value,
-                platform_config,
-                context=context,
-                use_relative_uri=use_relative_uri,
-                ingestion_params=ingestion_params,
-                additional_metadata=additional_metadata,
+                coll, key, value, use_relative_uri=use_relative_uri, **platform_ctx
             )
         else:
             _ingest_uns_ndarray(
-                coll,
-                key,
-                value,
-                platform_config,
-                context=context,
-                use_relative_uri=use_relative_uri,
-                ingestion_params=ingestion_params,
-                additional_metadata=additional_metadata,
+                coll, key, value, use_relative_uri=use_relative_uri, **platform_ctx
             )
         return
 
@@ -2763,9 +2752,9 @@ def _ingest_uns_2d_string_array(
         df_uri,
         None,
         ingestion_params=ingestion_params,
+        additional_metadata=additional_metadata,
         platform_config=platform_config,
         context=context,
-        additional_metadata=additional_metadata,
     ) as soma_df:
         _maybe_set(coll, key, soma_df, use_relative_uri=use_relative_uri)
         # Since ND arrays in the SOMA data model are arrays _of number_,
