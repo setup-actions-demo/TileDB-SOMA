@@ -1419,7 +1419,6 @@ def update_obs(
         context=context,
         platform_config=platform_config,
         default_index_name=default_index_name,
-        measurement_name="N/A for obs",
     )
 
 
@@ -1474,7 +1473,6 @@ def update_var(
         exp.ms[measurement_name].var,
         new_data,
         "update_var",
-        measurement_name=measurement_name,
         context=context,
         platform_config=platform_config,
         default_index_name=default_index_name,
@@ -1486,7 +1484,6 @@ def _update_dataframe(
     new_data: pd.DataFrame,
     caller_name: str,
     *,
-    measurement_name: str,
     context: Optional[SOMATileDBContext] = None,
     platform_config: Optional[PlatformConfig],
     default_index_name: str,
