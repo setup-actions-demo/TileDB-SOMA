@@ -26,3 +26,8 @@ WORKDIR TileDB-SOMA
 ARG ref=main
 RUN git checkout $ref
 RUN make install build=Debug
+
+WORKDIR apis/python
+RUN pip install -e .[dev]
+
+ENTRYPOINT [ "pytest", "tests" ]
