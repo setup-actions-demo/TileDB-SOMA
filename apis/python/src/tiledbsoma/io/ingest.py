@@ -97,6 +97,7 @@ from ._registration import (
     get_dataframe_values,
     signatures,
 )
+from ._registration.signatures import OriginalIndexMetadata, _compute_index_metadata
 from ._util import read_h5ad
 
 _NDArr = TypeVar("_NDArr", bound=NDArray)
@@ -1147,20 +1148,8 @@ def _write_dataframe(
     The caller should have copied anything pointing to a user-provided
     adata.obs, adata.var, etc.
     """
-    original_index_name = None
-    if df.index is not None and df.index.name is not None and df.index.name != "index":
-        original_index_name = df.index.name
-
-    df.reset_index(inplace=True)
-    if id_column_name is not None:
-        if id_column_name in df:
-            if "index" in df:
-                df.drop(columns=["index"], inplace=True)
-        else:
-            df.rename(columns={"index": id_column_name}, inplace=True)
-
+    original_index_metadata = _compute_index_metadata(df, id_column_name)
     df[SOMA_JOINID] = np.asarray(axis_mapping.data, dtype=np.int64)
-
     df.set_index(SOMA_JOINID, inplace=True)
 
     return _write_dataframe_impl(
@@ -1169,7 +1158,7 @@ def _write_dataframe(
         id_column_name,
         ingestion_params=ingestion_params,
         additional_metadata=additional_metadata,
-        original_index_name=original_index_name,
+        original_index_metadata=original_index_metadata,
         platform_config=platform_config,
         context=context,
     )
@@ -1182,7 +1171,7 @@ def _write_dataframe_impl(
     *,
     ingestion_params: IngestionParams,
     additional_metadata: AdditionalMetadata = None,
-    original_index_name: Optional[str] = None,
+    original_index_metadata: OriginalIndexMetadata = None,
     platform_config: Optional[PlatformConfig] = None,
     context: Optional[SOMATileDBContext] = None,
 ) -> DataFrame:
@@ -1241,10 +1230,10 @@ def _write_dataframe_impl(
     if arrow_table:
         _write_arrow_table(arrow_table, soma_df, tiledb_create_write_options)
 
-    # Save the original index name for outgest. We use JSON for elegant indication of index name
-    # being None (in Python anyway).
+    # Save metadata indicating which column was originally the index. If the persisted column name differs from the
+    # original index name (e.g. if the original index was unnamed), the metadata will be a pair (col name, index name).
     soma_df.metadata[_DATAFRAME_ORIGINAL_INDEX_NAME_JSON] = json.dumps(
-        original_index_name
+        original_index_metadata
     )
     add_metadata(soma_df, additional_metadata)
 

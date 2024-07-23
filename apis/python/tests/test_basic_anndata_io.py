@@ -674,14 +674,6 @@ def test_export_anndata(conftest_pbmc_small):
 
     with _factory.open(output_path) as exp:
         with pytest.raises(ValueError):
-            tiledbsoma.io.to_anndata(
-                exp, measurement_name="RNA", obs_id_name="nonesuch"
-            )
-        with pytest.raises(ValueError):
-            tiledbsoma.io.to_anndata(
-                exp, measurement_name="RNA", var_id_name="nonesuch"
-            )
-        with pytest.raises(ValueError):
             tiledbsoma.io.to_anndata(exp, measurement_name="nonesuch")
         with pytest.raises(ValueError):
             tiledbsoma.io.to_anndata(

@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple, Union
 
 import anndata as ad
 import attrs
@@ -69,23 +69,80 @@ def _string_dict_from_pandas_dataframe(
     """
 
     df = df.head(1).copy()  # since reset_index can be expensive on full data
-    if df.index.name is None or df.index.name == "index":
-        df.reset_index(inplace=True)
-        if default_index_name in df:
-            if "index" in df:
-                # Avoid the warning:
-                # "A value is trying to be set on a copy of a slice from a DataFrame"
-                # which would occur if we did:
-                # df.drop(columns=["index"], inplace=True)
-                df = df.drop(columns=["index"])
-        else:
-            df.rename(columns={"index": default_index_name}, inplace=True)
-    else:
-        df.reset_index(inplace=True)
-
+    _compute_index_metadata(df, default_index_name)
     arrow_table = df_to_arrow(df)
     arrow_schema = arrow_table.schema.remove_metadata()
     return _string_dict_from_arrow_schema(arrow_schema)
+
+
+# Metadata indicating a DataFrame's original index column name. `("a", None)` indicates the column persisted as "a"
+# should be restored as the index, on outgest, but also have its name set to `None`.
+OriginalIndexMetadata = Union[None, str, Tuple[str, Optional[str]]]
+
+
+def _compute_index_metadata(
+    df: pd.DataFrame, id_column_name: Optional[str]
+) -> OriginalIndexMetadata:
+    """Demote a DataFrame's index to a column (to make way for a required `soma_joinid` index), and compute and return
+    metadata for restoring the index column/name later on outgest.
+
+    1. If `df.index` has a name (and it's not "index", which is taken to be a default/unset value):
+       - `df.index.name` will also be the name of the corresponding SOMA DataFrame column (exiting index name takes
+         precedence over `id_column_name` arg).
+       - The returned `OriginalIndexMetadata` will also be that string.
+
+       The overall round trip is essentially:
+       - `reset_index` on ingest (demote index to eponymous column)
+       - `set_index` on outgest (restore column to index, with its original name)
+    2. Otherwise (index name is `None` or "index"):
+       - A fallback name (`id_column_name` if provided, "index" otherwise) is used for the column that the index will
+         become.
+       - The returned `OriginalIndexMetadata` will be a pair:
+         - [0]: the fallback name (which will exist as a column in the persisted SOMA DataFrame).
+         - [1]: the original pd.DataFrame's index name (which may be `None`, or something other than what was persisted,
+                if `id_column_name` was provided). This is used on outgest to restore the original index name.
+    """
+    demoted_index_name: Optional[str]
+    original_index_metadata: OriginalIndexMetadata
+    use_existing_index = df.index.name is not None and df.index.name != "index"
+    if use_existing_index:
+        # Existing `index.name` takes precedence over `id_column_name` argument
+        demoted_index_name = df.index.name
+        original_index_metadata = df.index.name
+        if demoted_index_name in df:
+            raise RuntimeError(
+                f"Index name {demoted_index_name} already exists as column in DataFrame"
+            )
+    else:
+        original_index_name = df.index.name  # "index" or `None`
+        if id_column_name is not None:
+            if id_column_name in df:
+                # Index will be dropped / not persisted; legacy behavior, prevents round-tripping correctly
+                demoted_index_name = None
+            else:
+                # Existing index will be persisted as `id_column_name` (instead of "index" or `None`)
+                demoted_index_name = id_column_name
+        else:
+            demoted_index_name = "index"
+            if demoted_index_name in df:
+                raise RuntimeError(
+                    f'DataFrame has no index.name, and already has a "{demoted_index_name}" column'
+                )
+        if demoted_index_name is None:
+            original_index_metadata = None
+        else:
+            original_index_metadata = (demoted_index_name, original_index_name)
+
+    if demoted_index_name is None:
+        # Existing index is not "reset", is effectively dropped when overwritten by set_index("soma_joinid")
+        original_index_metadata = None
+        df.reset_index(inplace=True, drop=True)
+    else:
+        # Preserve existing index as a column (to make way for required "soma_joinid" index), to be restored as index on
+        # outgest
+        df.reset_index(inplace=True, names=demoted_index_name)
+
+    return original_index_metadata
 
 
 @attrs.define(kw_only=True)

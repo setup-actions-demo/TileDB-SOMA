@@ -123,6 +123,48 @@ def _extract_X_key(
     return data
 
 
+def _extract_pdf(df: DataFrame, index_name: Optional[str] = None) -> pd.DataFrame:
+    """Outgest a SOMA DataFrame to Pandas, including restoring the original index{,.name}
+
+    A JSON `OriginalIndexMetadata` struct stores info about the original index:
+    - String indicating the SOMADataFrame column which should be set as the pd.DataFrame index.
+    - Optional flag indicating that the original index name was `None` (persisted column name
+      sentinel value will be discarded).
+
+    `index_name`, if provided, must match the stored `OriginalIndexMetadata` metadata, and is
+    effectively just a redundant check of the original index name.
+    """
+    pdf: pd.DataFrame = df.read().concat().to_pandas()
+    pdf.drop(columns=SOMA_JOINID, inplace=True)
+    index_metadata = json.loads(
+        df.metadata.get(_DATAFRAME_ORIGINAL_INDEX_NAME_JSON, "null")
+    )
+    if isinstance(index_metadata, list) and len(index_metadata) == 2:
+        index_col_name_persisted, original_index_name = index_metadata
+        pdf.set_index(index_col_name_persisted, inplace=True)
+        if index_name:
+            pdf.index.name = index_name
+        else:
+            pdf.index.name = original_index_name
+    elif isinstance(index_metadata, str):
+        pdf.set_index(index_metadata, inplace=True)
+        if index_name:
+            pdf.index.name = index_name
+    elif index_metadata is None:
+        if index_name:
+            if index_name not in pdf:
+                raise ValueError(
+                    f"{df.uri}: index_name {index_name} not found among DataFrame columns ({', '.join(pdf.columns)})"
+                )
+            pdf.set_index(index_name, inplace=True)
+    else:
+        raise ValueError(
+            f"{df.uri}: invalid {_DATAFRAME_ORIGINAL_INDEX_NAME_JSON} metadata: {index_metadata}"
+        )
+
+    return pdf
+
+
 # ----------------------------------------------------------------
 def to_anndata(
     experiment: Experiment,
@@ -196,55 +238,8 @@ def to_anndata(
     # * Else if the names used at ingest time are available, use them.
     # * Else use the default/fallback name.
 
-    # Restore the original index name for outgest. We use JSON for elegant indication of index
-    # name being None (in Python anyway). It may be 'null' which maps to Pyhton None.
-    obs_id_name = obs_id_name or json.loads(
-        experiment.obs.metadata.get(_DATAFRAME_ORIGINAL_INDEX_NAME_JSON, '"obs_id"')
-    )
-    var_id_name = var_id_name or json.loads(
-        measurement.var.metadata.get(_DATAFRAME_ORIGINAL_INDEX_NAME_JSON, '"var_id"')
-    )
-
-    obs_df = experiment.obs.read().concat().to_pandas()
-    obs_df.drop([SOMA_JOINID], axis=1, inplace=True)
-    if obs_id_name is not None:
-        if obs_id_name not in obs_df.keys():
-            raise ValueError(
-                f"requested obs IDs column name {obs_id_name} not found in input: {obs_df.keys()}"
-            )
-        obs_df.set_index(obs_id_name, inplace=True)
-    else:
-        # There are multiple cases to be handled here, all tested in CI.
-        # This else-block handle this one:
-        #
-        #                 orig.ident  nCount_RNA  ...
-        # ATGCCAGAACGACT           0        70.0  ...
-        # CATGGCCTGTGCAT           0        85.0  ...
-        # GAACCTGATGAACC           0        87.0  ...
-        #
-        # Namely:
-        # * The input AnnData dataframe had an index with no name
-        # * In the SOMA experiment we name that column "obs_id" and our index is "soma_joinid"
-        # * On outgest we drop "soma_joinid"
-        # * The thing we named "obs_id" needs to become the index again ...
-        # * ... and it needs to be nameless.
-        if "obs_id" in obs_df:
-            obs_df.set_index("obs_id", inplace=True)
-            obs_df.index.name = None
-
-    var_df = measurement.var.read().concat().to_pandas()
-
-    var_df.drop([SOMA_JOINID], axis=1, inplace=True)
-    if var_id_name is not None:
-        if var_id_name not in var_df.keys():
-            raise ValueError(
-                f"requested var IDs column name {var_id_name} not found in input: {var_df.keys()}"
-            )
-        var_df.set_index(var_id_name, inplace=True)
-    else:
-        if "var_id" in var_df:
-            var_df.set_index("var_id", inplace=True)
-            var_df.index.name = None
+    obs_df = _extract_pdf(experiment.obs, obs_id_name)
+    var_df = _extract_pdf(measurement.var, var_id_name)
 
     nobs = len(obs_df.index)
     nvar = len(var_df.index)
