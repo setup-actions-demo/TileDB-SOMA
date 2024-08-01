@@ -1058,7 +1058,6 @@ def _create_or_open_coll(
 def _extract_new_values_for_append(
     df_uri: str,
     arrow_table: pa.Table,
-    id_column_name: str,
     context: Optional[SOMATileDBContext] = None,
 ) -> pa.Table:
     """
@@ -1201,9 +1200,7 @@ def _write_dataframe_impl(
             # Nominally, nil id_column_name only happens for uns append and we do not append uns,
             # which is a concern for our caller. This is a second-level check.
             raise ValueError("internal coding error: id_column_name unspecified")
-        arrow_table = _extract_new_values_for_append(
-            df_uri, arrow_table, id_column_name, context
-        )
+        arrow_table = _extract_new_values_for_append(df_uri, arrow_table, context)
 
     try:
         soma_df = DataFrame.create(
