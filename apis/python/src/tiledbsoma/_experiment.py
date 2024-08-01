@@ -16,6 +16,7 @@ from ._collection import Collection, CollectionBase
 from ._dataframe import DataFrame
 from ._indexer import IntIndexer
 from ._measurement import Measurement
+from ._scene import Scene
 from ._soma_object import AnySOMAObject
 from ._tdb_handles import Wrapper
 
@@ -25,6 +26,7 @@ class Experiment(  # type: ignore[misc]  # __eq__ false positive
     experiment.Experiment[  # type: ignore[type-var]
         DataFrame,
         Collection[Measurement],
+        Collection[Scene],
         AnySOMAObject,
     ],
 ):
@@ -70,6 +72,7 @@ class Experiment(  # type: ignore[misc]  # __eq__ false positive
     _subclass_constrained_soma_types = {
         "obs": ("SOMADataFrame",),
         "ms": ("SOMACollection",),
+        "spatial": ("SOMACollection",),
     }
 
     @classmethod
