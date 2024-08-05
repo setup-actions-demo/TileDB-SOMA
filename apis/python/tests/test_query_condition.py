@@ -226,19 +226,22 @@ def test_eval_error_conditions(malformed_condition):
 
 
 @pytest.mark.parametrize(
-    "text_and_exception",
+    "expr_and_msg",
     [
-        ["foo is True", SOMAError],
-        ["foo is not True", SOMAError],
-        ["foo &&& bar", SOMAError],
+        ["foo is True", "the `is` operator is not supported"],
+        ["foo is not True", "the `is not` operator is not supported"],
+        [
+            "foo &&& bar",
+            "Could not parse the given QueryCondition statement: foo &&& bar",
+        ],
     ],
 )
-def test_query_condition_syntax_handling(text_and_exception):
+def test_query_condition_syntax_handling(expr_and_msg):
     uri = os.path.join(SOMA_URI, "obs")
-    text, exception = text_and_exception
+    expr, msg = expr_and_msg
     with DataFrame.open(uri) as obs:
-        with pytest.raises(exception):
-            obs.read(value_filter=text).concat()
+        with pytest.raises(SOMAError, match=msg):
+            obs.read(value_filter=expr).concat()
 
 
 if __name__ == "__main__":
