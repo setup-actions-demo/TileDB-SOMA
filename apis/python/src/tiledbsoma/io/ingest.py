@@ -92,6 +92,7 @@ from ._common import (
     _UNS_OUTGEST_HINT_KEY,
     Matrix,
     SparseMatrix,
+    UnsMapping,
 )
 from ._registration import (
     AxisIDMapping,
@@ -106,7 +107,6 @@ _NDArr = TypeVar("_NDArr", bound=NDArray)
 _TDBO = TypeVar("_TDBO", bound=SOMAObject[RawHandle])
 
 
-Uns = Mapping[str, Any]
 AdditionalMetadata = Optional[Dict[str, Metadatum]]
 
 
@@ -394,7 +394,7 @@ class IngestCtx(TypedDict):
     additional_metadata: AdditionalMetadata
 
 
-class PlatformCtx(IngestCtx):
+class IngestPlatformCtx(IngestCtx):
     """Convenience type-alias for kwargs passed to ingest functions.
 
     Extends :class:`IngestCtx`, adds ``platform_config``."""
@@ -497,7 +497,9 @@ def from_anndata(
         ingestion_params=ingestion_params,
         additional_metadata=additional_metadata,
     )
-    platform_ctx: PlatformCtx = dict(**ingest_ctx, platform_config=platform_config)
+    platform_ctx: IngestPlatformCtx = dict(
+        **ingest_ctx, platform_config=platform_config
+    )
 
     # Must be done first, to create the parent directory.
     experiment = _create_or_open_collection(Experiment, experiment_uri, **ingest_ctx)
@@ -1518,8 +1520,18 @@ def _update_dataframe(
             )
         new_jids = list(range(num_new_data))
         if old_jids != new_jids:
+            max_jid_diffs_to_display = 10
+            jid_diffs = [
+                (old_jid, new_jid)
+                for old_jid, new_jid in zip(old_jids, new_jids)
+                if old_jid != new_jid
+            ]
+            jid_diff_strs = [
+                f"{old_jid} != {new_jid}"
+                for old_jid, new_jid in jid_diffs[:max_jid_diffs_to_display]
+            ] + (["…"] if len(jid_diffs) > max_jid_diffs_to_display else [])
             raise ValueError(
-                f"{caller_name}: old data soma_joinid must be [0,{num_old_data}), got {old_jids}",
+                f"{caller_name}: old data soma_joinid must be [0,{num_old_data}), found {len(jid_diffs)} diffs: {', '.join(jid_diff_strs)}"
             )
 
     old_keys = set(old_sig.keys())
@@ -2486,7 +2498,7 @@ def _chunk_is_contained_in_axis(
 
 def _maybe_ingest_uns(
     m: Measurement,
-    uns: Uns,
+    uns: UnsMapping,
     *,
     platform_config: Optional[PlatformConfig],
     context: Optional[SOMATileDBContext],
@@ -2574,7 +2586,7 @@ def _ingest_uns_node(
         coll.metadata[key] = value
         return
 
-    platform_ctx: PlatformCtx = dict(
+    platform_ctx: IngestPlatformCtx = dict(
         platform_config=platform_config,
         context=context,
         ingestion_params=ingestion_params,

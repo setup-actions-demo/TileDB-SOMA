@@ -46,8 +46,8 @@ from ._common import (
     _UNS_OUTGEST_HINT_2D,
     _UNS_OUTGEST_HINT_KEY,
     Matrix,
+    UnsMapping,
 )
-from .ingest import Uns
 
 
 # ----------------------------------------------------------------
@@ -310,7 +310,7 @@ def to_anndata(
             matrix = measurement.varp[key].read().tables().concat().to_pandas()
             varp[key] = conversions.csr_from_tiledb_df(matrix, nvar, nvar)
 
-    uns: Uns = {}
+    uns: UnsMapping = {}
     if "uns" in measurement:
         s = _util.get_start_stamp()
         uns_coll = cast(Collection[Any], measurement["uns"])
@@ -419,7 +419,7 @@ def _extract_uns(
     collection: Collection[Any],
     uns_keys: Optional[Sequence[str]] = None,
     level: int = 0,
-) -> Uns:
+) -> UnsMapping:
     """
     This is a helper function for ``to_anndata`` of ``uns`` elements.
     """
