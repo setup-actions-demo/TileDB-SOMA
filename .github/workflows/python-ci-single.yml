@@ -44,7 +44,8 @@ jobs:
       run: |
         echo 'Expected "Set up Python" hash: '"${{ hashFiles('.github/workflows/python-ci-single.yml') }}"
         echo '"Set up Python" should NOT use setup.py hash: '"${{ hashFiles('apis/python/setup.py') }}"
-        wget -O old-python-ci-single.yml https://raw.githubusercontent.com/single-cell-data/TileDB-SOMA/main/.github/workflows/python-ci-single.yml
+        # "old-python-ci-single.yml" is ".github/workflows/python-ci-single.yml" from the base of this PR (274c6f497):
+        # wget -O old-python-ci-single.yml https://raw.githubusercontent.com/single-cell-data/TileDB-SOMA/274c6f49766e19fa645d93cc99e213d0dcca372f/.github/workflows/python-ci-single.yml
         echo '"Set up Python" should also NOT use hash of old python-ci-single.yml: '"${{ hashFiles('old-python-ci-single.yml') }}"
     - name: Install pre-commit
       run: python -m pip -v install pre-commit
