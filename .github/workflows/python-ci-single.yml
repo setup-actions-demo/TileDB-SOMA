@@ -51,13 +51,13 @@ jobs:
     - name: Check cache hash keys
       run: |
         setup_python_hash="$(scripts/hash-files.py .github/workflows/python-ci-single.yml)"
-        echo "Expected setup-python hash key: $setup_python_hash"
+        echo 'Expected "Set up Python" hash key: '"$setup_python_hash"
         echo ""
         actions_cache_hash="$(scripts/hash-files.py .github/workflows/python-ci-single.yml .pre-commit-config.yaml)"
-        echo "Expected actions/cache hash key: $actions_cache_hash"
+        echo 'Expected "Restore pre-commit cache" hash key: '"$actions_cache_hash"
         echo ""
         setup_py_hash="$(scripts/hash-files.py apis/python/setup.py)"
-        echo "Should NOT see: $setup_py_hash"
+        echo '"Set up Python" should NOT use setup.py hash: '"$setup_py_hash"
         echo ""
 
     - name: Install pre-commit

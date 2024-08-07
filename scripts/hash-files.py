@@ -10,9 +10,6 @@ for path in sys.argv[1:]:
     with open(path, "rb") as f:
         for byte_block in iter(lambda: f.read(4096), b""):
             file_sha256.update(byte_block)
-    digest = file_sha256.digest()
-    print(f"{path}: {digest.hex()}", file=sys.stderr)
-    sha256.update(digest)
+    sha256.update(file_sha256.digest())
 
-result = sha256.hexdigest()
-print(result)
+print(sha256.hexdigest())
