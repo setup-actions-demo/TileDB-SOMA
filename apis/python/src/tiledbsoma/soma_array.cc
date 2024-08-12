@@ -82,19 +82,6 @@ void write_coords(
     }
 }
 
-void update(SOMAArray& array, py::handle pyarrow_schema) {
-    ArrowSchema arrow_schema;
-    uintptr_t arrow_schema_ptr = (uintptr_t)(&arrow_schema);
-    pyarrow_schema.attr("_export_to_c")(arrow_schema_ptr);
-
-    try {
-        array.update_columns(std::make_unique<ArrowSchema>(arrow_schema));
-    } catch (const std::exception& e) {
-        TPY_ERROR_LOC(e.what());
-    }
-    arrow_schema.release(&arrow_schema);
-}
-
 void load_soma_array(py::module& m) {
     py::class_<SOMAArray, SOMAObject>(m, "SOMAArray")
         .def(
@@ -530,8 +517,6 @@ void load_soma_array(py::module& m) {
         .def("write", write)
 
         .def("write_coords", write_coords)
-
-        .def("update", update)
 
         .def("nnz", &SOMAArray::nnz, py::call_guard<py::gil_scoped_release>())
 

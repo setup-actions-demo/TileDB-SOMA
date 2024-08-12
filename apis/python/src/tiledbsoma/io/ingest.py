@@ -52,6 +52,7 @@ from .. import (
     eta,
     logging,
 )
+from .. import pytiledbsoma as clib
 from .._arrow_types import df_to_arrow
 from .._collection import AnyTileDBCollection, CollectionBase
 from .._common_nd_array import NDArray
@@ -100,7 +101,7 @@ from ._registration import (
     signatures,
 )
 from ._registration.signatures import OriginalIndexMetadata, _prepare_df_for_ingest
-from ._util import read_h5ad
+from ._util import get_arrow_str_format, read_h5ad
 
 _NDArr = TypeVar("_NDArr", bound=NDArray)
 _TDBO = TypeVar("_TDBO", bound=SOMAObject[RawHandle])
@@ -358,7 +359,7 @@ def from_h5ad(
 
     logging.log_io(None, f"START  READING {input_path}")
 
-    with read_h5ad(input_path, mode="r", ctx=context) as anndata:
+    with read_h5ad(input_path, mode="r", ctx=context.tiledb_ctx) as anndata:
         logging.log_io(None, _util.format_elapsed(s, f"FINISH READING {input_path}"))
 
         uri = from_anndata(
@@ -1490,21 +1491,6 @@ def _update_dataframe(
         new_data, default_index_name
     )
 
-    old_keys = set(old_sig.keys())
-    new_keys = set(new_sig.keys())
-    common_keys = old_keys.intersection(new_keys)
-
-    msgs = []
-    for key in common_keys:
-        old_type = old_sig[key]
-        new_type = new_sig[key]
-
-        if old_type != new_type:
-            msgs.append(f"{key} type {old_type} != {new_type}")
-    if msgs:
-        msg = ", ".join(msgs)
-        raise ValueError(f"unsupported type updates: {msg}")
-
     with DataFrame.open(
         sdf.uri, mode="r", context=context, platform_config=platform_config
     ) as sdf_r:
@@ -1536,14 +1522,45 @@ def _update_dataframe(
                 f"{caller_name}: old data soma_joinid must be [0,{num_old_data}), found {len(jid_diffs)} diffs: {', '.join(jid_diff_strs)}"
             )
 
-        new_data.reset_index(inplace=True)
-        if default_index_name is not None:
-            if default_index_name in new_data:
-                if "index" in new_data:
-                    new_data.drop(columns=["index"], inplace=True)
-            else:
-                new_data.rename(columns={"index": default_index_name}, inplace=True)
-        sdf_r._handle._handle.update(df_to_arrow(new_data).schema)
+    old_keys = set(old_sig.keys())
+    new_keys = set(new_sig.keys())
+    drop_keys = old_keys.difference(new_keys)
+    add_keys = new_keys.difference(old_keys)
+    common_keys = old_keys.intersection(new_keys)
+
+    msgs = []
+    for key in common_keys:
+        old_type = old_sig[key]
+        new_type = new_sig[key]
+
+        if old_type != new_type:
+            msgs.append(f"{key} type {old_type} != {new_type}")
+    if msgs:
+        msg = ", ".join(msgs)
+        raise ValueError(f"unsupported type updates: {msg}")
+
+    arrow_table = df_to_arrow(new_data)
+    arrow_schema = arrow_table.schema.remove_metadata()
+
+    add_attrs = dict()
+    add_enmrs = dict()
+    for add_key in add_keys:
+        # Don't directly use the new dataframe's dtypes. Go through the
+        # to-Arrow-schema logic, and back, as this recapitulates the original
+        # schema-creation logic.
+        atype = arrow_schema.field(add_key).type
+        if pa.types.is_dictionary(arrow_table.schema.field(add_key).type):
+            add_attrs[add_key] = get_arrow_str_format(atype.index_type)
+            add_enmrs[add_key] = (
+                get_arrow_str_format(atype.value_type),
+                atype.ordered,
+            )
+        else:
+            add_attrs[add_key] = get_arrow_str_format(atype)
+
+    clib._update_dataframe(
+        sdf.uri, sdf.context.native_context, list(drop_keys), add_attrs, add_enmrs
+    )
 
     _write_dataframe(
         df_uri=sdf.uri,
