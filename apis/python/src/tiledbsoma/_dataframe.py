@@ -253,7 +253,6 @@ class DataFrame(SOMAArray, somacore.DataFrame):
         )
 
         plt_cfg = _util.build_clib_platform_config(platform_config)
-        timestamp_ms = context._open_timestamp_ms(tiledb_timestamp)
         try:
             clib.SOMADataFrame.create(
                 uri,
@@ -261,7 +260,8 @@ class DataFrame(SOMAArray, somacore.DataFrame):
                 index_column_info=index_column_info,
                 ctx=context.native_context,
                 platform_config=plt_cfg,
-                timestamp=(0, timestamp_ms),
+                timestamp=tiledb_timestamp
+                and (0, context._open_timestamp_ms(tiledb_timestamp)),
             )
         except SOMAError as e:
             raise map_exception_for_create(e, uri) from None
